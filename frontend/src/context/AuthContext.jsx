@@ -1,12 +1,19 @@
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import authService from "../services/authService";
-import { getStoredToken, setStoredToken, removeStoredToken } from "../utils";
+import {
+  getStoredToken,
+  setStoredToken,
+  getStoredRefreshToken,
+  setStoredRefreshToken,
+  clearAllTokens,
+} from "../utils";
 
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => getStoredToken());
+  const [refreshToken, setRefreshToken] = useState(() => getStoredRefreshToken());
   const [loading, setLoading] = useState(true);
 
   // Initialize and verify authentication state on app load
@@ -25,8 +32,9 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Session verification failed:", error);
-      removeStoredToken();
+      clearAllTokens();
       setToken(null);
+      setRefreshToken(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -38,8 +46,9 @@ export const AuthProvider = ({ children }) => {
 
     // Handle unauthorized event dispatched from Axios interceptor
     const handleUnauthorized = () => {
-      removeStoredToken();
+      clearAllTokens();
       setToken(null);
+      setRefreshToken(null);
       setUser(null);
     };
 
@@ -49,19 +58,22 @@ export const AuthProvider = ({ children }) => {
     };
   }, [loadUser]);
 
-  const login = async (email, password) => {
+  const login = async (email, password, remember_me = false) => {
     setLoading(true);
     try {
-      const result = await authService.login({ email, password });
-      const accessToken = result.data.access_token;
-      
-      setStoredToken(accessToken);
-      setToken(accessToken);
+      const result = await authService.login({ email, password, remember_me });
+      const { access_token, refresh_token, user: loggedUser } = result.data;
 
-      // Fetch user profile immediately after login
-      const profile = await authService.getMe();
-      setUser(profile.data);
-      return profile.data;
+      setStoredToken(access_token);
+      setToken(access_token);
+
+      if (refresh_token) {
+        setStoredRefreshToken(refresh_token);
+        setRefreshToken(refresh_token);
+      }
+
+      setUser(loggedUser);
+      return loggedUser;
     } finally {
       setLoading(false);
     }
@@ -77,19 +89,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email) => {
+    return await authService.forgotPassword(email);
+  };
+
+  const resetPassword = async (token, new_password) => {
+    return await authService.resetPassword({ token, new_password });
+  };
+
+  const verifyEmail = async (token) => {
+    const result = await authService.verifyEmail(token);
+    if (result.data) {
+      setUser(result.data);
+    }
+    return result;
+  };
+
   const logout = () => {
-    removeStoredToken();
+    clearAllTokens();
     setToken(null);
+    setRefreshToken(null);
     setUser(null);
   };
 
   const value = {
     user,
     token,
+    refreshToken,
     loading,
     isAuthenticated: Boolean(token && user),
     login,
     register,
+    forgotPassword,
+    resetPassword,
+    verifyEmail,
     logout,
     refreshUser: loadUser,
   };

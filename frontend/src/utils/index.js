@@ -19,7 +19,7 @@ export const setStoredToken = (token) => {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
     }
   } catch (e) {
-    console.error("Failed to persist token to storage", e);
+    console.error("Failed to persist access token to storage", e);
   }
 };
 
@@ -27,13 +27,54 @@ export const removeStoredToken = () => {
   try {
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
   } catch (e) {
-    console.error("Failed to remove token from storage", e);
+    console.error("Failed to remove access token from storage", e);
   }
+};
+
+export const getStoredRefreshToken = () => {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredRefreshToken = (refreshToken) => {
+  try {
+    if (refreshToken) {
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    }
+  } catch (e) {
+    console.error("Failed to persist refresh token to storage", e);
+  }
+};
+
+export const removeStoredRefreshToken = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  } catch (e) {
+    console.error("Failed to remove refresh token from storage", e);
+  }
+};
+
+export const clearAllTokens = () => {
+  removeStoredToken();
+  removeStoredRefreshToken();
 };
 
 export const formatErrorMessage = (error) => {
   if (error.response?.data?.message) {
     return error.response.data.message;
+  }
+  if (error.response?.data?.detail) {
+    if (typeof error.response.data.detail === "string") {
+      return error.response.data.detail;
+    }
+    if (Array.isArray(error.response.data.detail)) {
+      return error.response.data.detail.map((d) => d.msg || d).join(", ");
+    }
   }
   if (error.message) {
     return error.message;

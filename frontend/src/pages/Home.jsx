@@ -7,7 +7,6 @@ import {
   Briefcase,
   Building2,
   ShieldCheck,
-  CheckCircle,
   ArrowRight,
   TrendingUp,
 } from "lucide-react";
@@ -122,46 +121,6 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* Foundation Architecture Highlights */}
-      <section className="bg-navy-900 text-white rounded-3xl p-8 sm:p-12 shadow-lg">
-        <div className="max-w-3xl space-y-4">
-          <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
-            Sprint 0 Foundation Completed
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading">
-            Production-Grade Clean Layered Architecture
-          </h2>
-          <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-            Our codebase is structured for a 5-developer Agile team across 4 planned sprints. Features modular services, clean repositories, strict Pydantic v2 validation, Alembic migrations on MySQL, and JWT role-based access control.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4 text-xs font-medium text-slate-200">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>FastAPI + MySQL 8</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>SQLAlchemy 2.x ORM</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Alembic Migrations</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>JWT + Bcrypt Auth</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>React 19 + Vite</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Centralized Axios Layer</span>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
