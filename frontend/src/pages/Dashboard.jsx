@@ -137,7 +137,7 @@ export const Dashboard = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between py-1.5 border-b border-slate-100">
               <span className="text-slate-500">Current Phase:</span>
-              <span className="font-bold text-emerald-600">Sprint 0 (Foundation)</span>
+              <span className="font-bold text-emerald-600">Sprint 1 (Active)</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-slate-100">
               <span className="text-slate-500">Planned Sprints:</span>

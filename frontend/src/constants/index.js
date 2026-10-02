@@ -12,7 +12,8 @@ export const USER_ROLES = {
 };
 
 export const STORAGE_KEYS = {
-  TOKEN: "skill2career_token",
+  TOKEN: "skill2career_access_token",
+  REFRESH_TOKEN: "skill2career_refresh_token",
   USER: "skill2career_user",
 };
 
@@ -20,5 +21,11 @@ export const ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   REGISTER: "/register",
+  RESET_PASSWORD: "/reset-password",
+  VERIFY_EMAIL: "/verify-email",
   DASHBOARD: "/dashboard",
+  COURSES: "/courses",
+  JOBS: "/jobs",
+  FORUM: "/forum",
+  MOCK_TESTS: "/mock-tests",
 };

@@ -49,6 +49,12 @@ class ConflictException(AppException):
         super().__init__(message=message, status_code=status.HTTP_409_CONFLICT, error_code=error_code, details=details)
 
 
+class TooManyRequestsException(AppException):
+    def __init__(self, message: str = "Too many failed attempts. Please try again later.", error_code: str = "TOO_MANY_REQUESTS", details: Optional[Any] = None):
+        super().__init__(message=message, status_code=status.HTTP_429_TOO_MANY_REQUESTS, error_code=error_code, details=details)
+
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Register centralized exception handlers for standard JSON error formatting."""
 
