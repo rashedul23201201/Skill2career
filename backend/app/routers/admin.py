@@ -1,0 +1,172 @@
+from typing import Optional, List
+from fastapi import APIRouter, Depends, Query, Request, status
+from sqlalchemy.orm import Session
+
+from app.database.session import get_db
+from app.dependencies.auth import require_admin
+from app.models.user import User, UserRole
+from app.schemas.auth import ApiResponse, UserResponse
+from app.schemas.admin import (
+    AdminOverviewStats,
+    PaginatedUserResponse,
+    UserStatusUpdateRequest,
+    UserRoleUpdateRequest,
+    AuditLogResponse,
+)
+from app.services.admin_service import AdminService
+
+router = APIRouter(prefix="/admin", tags=["Admin Management"])
+admin_service = AdminService()
+
+
+@router.get(
+    "/overview-stats",
+    response_model=ApiResponse[AdminOverviewStats],
+    status_code=status.HTTP_200_OK,
+    summary="Get system overview metrics for Admin Dashboard"
+)
+def get_overview_stats(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[AdminOverviewStats]:
+    """Retrieve system counters: total users, companies, active courses, pending approvals, and user breakdown."""
+    stats = admin_service.get_overview_stats(db)
+    return ApiResponse[AdminOverviewStats](
+        success=True,
+        message="System overview stats retrieved successfully",
+        data=stats
+    )
+
+
+@router.get(
+    "/users",
+    response_model=ApiResponse[PaginatedUserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List paginated users with filters and search (SKL-50/SKL-24)"
+)
+def get_users(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    size: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    role: Optional[UserRole] = Query(default=None, description="Filter by user role"),
+    is_active: Optional[bool] = Query(default=None, description="Filter by active status"),
+    is_verified: Optional[bool] = Query(default=None, description="Filter by email verification status"),
+    search: Optional[str] = Query(default=None, description="Search term for email or name"),
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[PaginatedUserResponse]:
+    """Retrieve a filterable, paginated directory of platform users for administrative management."""
+    result = admin_service.get_users_paginated(
+        db=db,
+        page=page,
+        size=size,
+        role=role,
+        is_active=is_active,
+        is_verified=is_verified,
+        search=search
+    )
+    return ApiResponse[PaginatedUserResponse](
+        success=True,
+        message="Users retrieved successfully",
+        data=result
+    )
+
+
+@router.get(
+    "/users/{user_id}",
+    response_model=ApiResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get user details by ID"
+)
+def get_user_by_id(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[UserResponse]:
+    """Retrieve detailed user entity by ID."""
+    user = admin_service.get_user_by_id(db, user_id)
+    return ApiResponse[UserResponse](
+        success=True,
+        message="User retrieved successfully",
+        data=UserResponse.model_validate(user)
+    )
+
+
+@router.patch(
+    "/users/{user_id}/status",
+    response_model=ApiResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Activate or deactivate a user account"
+)
+def update_user_status(
+    user_id: int,
+    payload: UserStatusUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[UserResponse]:
+    """Toggle user account active status. Deactivation immediately revokes active user sessions."""
+    client_ip = request.client.host if request.client else "unknown"
+    updated_user = admin_service.update_user_status(
+        db=db,
+        admin_user=admin_user,
+        user_id=user_id,
+        is_active=payload.is_active,
+        reason=payload.reason,
+        ip_address=client_ip
+    )
+    status_str = "activated" if payload.is_active else "deactivated"
+    return ApiResponse[UserResponse](
+        success=True,
+        message=f"User account successfully {status_str}",
+        data=UserResponse.model_validate(updated_user)
+    )
+
+
+@router.patch(
+    "/users/{user_id}/role",
+    response_model=ApiResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Modify a user's system role"
+)
+def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[UserResponse]:
+    """Reassign user role. Triggers immediate active session revocation and security audit logging."""
+    client_ip = request.client.host if request.client else "unknown"
+    updated_user = admin_service.update_user_role(
+        db=db,
+        admin_user=admin_user,
+        user_id=user_id,
+        new_role=payload.role,
+        reason=payload.reason,
+        ip_address=client_ip
+    )
+    return ApiResponse[UserResponse](
+        success=True,
+        message=f"User role successfully updated to {payload.role.value}",
+        data=UserResponse.model_validate(updated_user)
+    )
+
+
+@router.get(
+    "/audit-logs",
+    response_model=ApiResponse[List[AuditLogResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get recent security and administrative audit logs"
+)
+def get_audit_logs(
+    limit: int = Query(default=15, ge=1, le=50, description="Max logs to return"),
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[List[AuditLogResponse]]:
+    """Retrieve recent administrative actions and security overrides for activity feed."""
+    logs = admin_service.get_recent_audit_logs(db, limit=limit)
+    return ApiResponse[List[AuditLogResponse]](
+        success=True,
+        message="Audit logs retrieved successfully",
+        data=logs
+    )

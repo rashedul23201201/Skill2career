@@ -12,6 +12,13 @@ from app.schemas.auth import (
     RegisterResponseData,
     ApiResponse,
 )
+from app.schemas.admin import (
+    AdminOverviewStats,
+    UserStatusUpdateRequest,
+    UserRoleUpdateRequest,
+    PaginatedUserResponse,
+    AuditLogResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -24,4 +31,9 @@ __all__ = [
     "VerifyEmailRequest",
     "RegisterResponseData",
     "ApiResponse",
+    "AdminOverviewStats",
+    "UserStatusUpdateRequest",
+    "UserRoleUpdateRequest",
+    "PaginatedUserResponse",
+    "AuditLogResponse",
 ]
