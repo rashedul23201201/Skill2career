@@ -2,5 +2,6 @@
 
 from app.repositories.user_repository import UserRepository
 from app.repositories.token_repository import TokenRepository
+from app.repositories.audit_log_repository import AuditLogRepository
 
-__all__ = ["UserRepository", "TokenRepository"]
+__all__ = ["UserRepository", "TokenRepository", "AuditLogRepository"]

@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ROUTES } from "../../constants";
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export const Footer = () => {
   return (
     <footer className="bg-navy-900 text-slate-400 border-t border-navy-800 mt-auto">
@@ -56,7 +58,7 @@ export const Footer = () => {
         </div>
 
         <div className="border-t border-navy-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} SKILL2CAREER. All rights reserved.</p>
+          <p>© {CURRENT_YEAR} SKILL2CAREER. All rights reserved.</p>
           <p className="mt-2 sm:mt-0">University Software Engineering Project · 4 Sprints · 5 Developers</p>
         </div>
       </div>

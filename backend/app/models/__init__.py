@@ -3,6 +3,7 @@
 from app.models.user import User, UserRole
 from app.models.token import RefreshToken, PasswordResetToken, EmailVerificationToken
 from app.models.profile import LearnerProfile, InstructorProfile, CompanyProfile
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User",
@@ -13,4 +14,6 @@ __all__ = [
     "LearnerProfile",
     "InstructorProfile",
     "CompanyProfile",
+    "AuditLog",
 ]
+

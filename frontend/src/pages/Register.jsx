@@ -9,7 +9,6 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowRight,
-  Building2,
   Lock,
   Phone,
   Globe,

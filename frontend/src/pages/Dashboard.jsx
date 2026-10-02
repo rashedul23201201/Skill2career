@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import authService from "../services/authService";
 import Button from "../components/forms/Button";
+import { ROUTES } from "../constants";
 import {
   User,
-  ShieldCheck,
+  Shield,
   Activity,
   CheckCircle2,
   Calendar,
   Layers,
-  Sparkles,
 } from "lucide-react";
 
 export const Dashboard = () => {
@@ -53,6 +54,15 @@ export const Dashboard = () => {
         </div>
 
         <div className="flex items-center space-x-3">
+          {user?.role === "ADMIN" && (
+            <Link
+              to={ROUTES.ADMIN_DASHBOARD}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-navy-950 text-white hover:bg-navy-900 transition-colors shadow-sm"
+            >
+              <Shield className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Admin Console</span>
+            </Link>
+          )}
           <Button variant="outline" size="sm" onClick={logout}>
             Sign Out
           </Button>

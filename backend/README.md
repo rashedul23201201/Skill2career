@@ -168,6 +168,22 @@ alembic downgrade -1
 
 ---
 
+### Database Seeding (Demo & Admin Accounts)
+
+To populate initial accounts (Super Admin, Learner, Instructor, and Company):
+
+```bash
+python seed.py
+```
+
+Default credentials seeded:
+* **Admin:** `admin@skill2career.com` / `Admin12345!`
+* **Learner:** `learner@skill2career.com` / `Learner12345!`
+* **Instructor:** `instructor@skill2career.com` / `Instructor12345!`
+* **Company:** `company@skill2career.com` / `Company12345!`
+
+---
+
 ## 7. Running the Application
 
 Start the development server with Uvicorn:
@@ -200,9 +216,19 @@ The tests run in-memory and execute cleanly without requiring external databases
 |---|---|---|---|---|
 | `GET` | `/` | Service metadata & links | No | Any |
 | `GET` | `/api/v1/health` | Health check endpoint | No | Any |
-| `POST` | `/api/v1/auth/register` | Register new user | No | Any |
-| `POST` | `/api/v1/auth/login` | Login and get JWT token | No | Any |
-| `GET` | `/api/v1/auth/me` | Current user profile | Yes (Bearer) | Any authenticated |
+| `POST` | `/api/v1/auth/register` | Register new user across roles | No | Any |
+| `POST` | `/api/v1/auth/login` | Login and get JWT token pair | No | Any |
+| `POST` | `/api/v1/auth/refresh` | Rotate and refresh access token | No | Any |
+| `POST` | `/api/v1/auth/forgot-password` | Request password reset token | No | Any |
+| `POST` | `/api/v1/auth/reset-password` | Reset password using valid token | No | Any |
+| `POST` | `/api/v1/auth/verify-email` | Verify user email address | No | Any |
+| `GET` | `/api/v1/auth/me` | Current authenticated user profile | Yes (Bearer) | Any authenticated |
+| `GET` | `/api/v1/admin/overview-stats` | System KPI metric counters | Yes (Bearer) | `ADMIN` |
+| `GET` | `/api/v1/admin/users` | Paginated & filtered user directory | Yes (Bearer) | `ADMIN` |
+| `GET` | `/api/v1/admin/users/{user_id}` | User details by ID | Yes (Bearer) | `ADMIN` |
+| `PATCH` | `/api/v1/admin/users/{user_id}/status` | Activate or suspend user account | Yes (Bearer) | `ADMIN` |
+| `PATCH` | `/api/v1/admin/users/{user_id}/role` | Reassign user RBAC role | Yes (Bearer) | `ADMIN` |
+| `GET` | `/api/v1/admin/audit-logs` | Fetch administrative audit trail | Yes (Bearer) | `ADMIN` |
 
 ---
 

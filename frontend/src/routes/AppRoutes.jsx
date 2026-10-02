@@ -7,9 +7,11 @@ import Register from "../pages/Register";
 import ResetPassword from "../pages/ResetPassword";
 import VerifyEmail from "../pages/VerifyEmail";
 import Dashboard from "../pages/Dashboard";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import UserManagement from "../pages/admin/UserManagement";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
-import { ROUTES } from "../constants";
+import { ROUTES, USER_ROLES } from "../constants";
 
 // Modular placeholder for future sprint navigation items
 const FeaturePlaceholder = ({ title, sprint, description }) => (
@@ -75,12 +77,30 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Protected Dashboard Route */}
+        {/* General Protected Dashboard Route */}
         <Route
           path={ROUTES.DASHBOARD}
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Admin Routes (SKL-50 / SKL-24) */}
+        <Route
+          path={ROUTES.ADMIN_DASHBOARD}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_USERS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+              <UserManagement />
             </ProtectedRoute>
           }
         />
