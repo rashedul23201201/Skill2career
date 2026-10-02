@@ -1,0 +1,168 @@
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
+import authService from "../services/authService";
+import Button from "../components/forms/Button";
+import {
+  User,
+  ShieldCheck,
+  Activity,
+  CheckCircle2,
+  Calendar,
+  Layers,
+  Sparkles,
+} from "lucide-react";
+
+export const Dashboard = () => {
+  const { user, logout } = useAuth();
+  const [healthStatus, setHealthStatus] = useState(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        setHealthLoading(true);
+        const data = await authService.checkHealth();
+        setHealthStatus(data);
+      } catch (err) {
+        console.error("Health check error:", err);
+        setHealthStatus({ status: "unavailable" });
+      } finally {
+        setHealthLoading(false);
+      }
+    };
+
+    fetchHealth();
+  }, []);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      {/* Welcome Banner */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-navy-900 font-heading">
+              Welcome back, {user?.first_name} {user?.last_name}!
+            </h1>
+            <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full">
+              {user?.role}
+            </span>
+          </div>
+          <p className="text-sm text-slate-500">
+            Account Email: <span className="font-medium text-navy-800">{user?.email}</span> · Account ID: #{user?.id}
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <Button variant="outline" size="sm" onClick={logout}>
+            Sign Out
+          </Button>
+        </div>
+      </div>
+
+      {/* Grid of Foundation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* User Identity Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-navy-900 font-heading">
+              Authentication Profile
+            </h3>
+            <User className="w-5 h-5 text-emerald-600" />
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Assigned Role:</span>
+              <span className="font-semibold text-navy-800">{user?.role}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Account Status:</span>
+              <span className="inline-flex items-center text-emerald-600 font-medium text-xs">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Active
+              </span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-slate-500">Joined:</span>
+              <span className="text-xs text-slate-700">
+                {user?.created_at ? new Date(user.created_at).toLocaleDateString() : "Just now"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* API & Backend Health Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-navy-900 font-heading">
+              Backend Connectivity
+            </h3>
+            <Activity className="w-5 h-5 text-emerald-500" />
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">API Endpoint:</span>
+              <span className="font-mono text-xs text-navy-700">/api/v1/health</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Status:</span>
+              <span
+                className={`font-semibold text-xs px-2 py-0.5 rounded ${
+                  healthStatus?.status === "healthy"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                {healthLoading ? "Checking..." : healthStatus?.status || "Connecting..."}
+              </span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-slate-500">Environment:</span>
+              <span className="text-xs font-mono text-slate-600">
+                {healthStatus?.environment || "development"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sprint Roadmap Status Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-navy-900 font-heading">
+              Sprint Roadmap
+            </h3>
+            <Calendar className="w-5 h-5 text-navy-900" />
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Current Phase:</span>
+              <span className="font-bold text-emerald-600">Sprint 0 (Foundation)</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Planned Sprints:</span>
+              <span className="text-navy-800 font-medium">4 Agile Sprints</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-slate-500">Backlog:</span>
+              <span className="text-xs font-medium text-slate-700">36 Jira Tickets</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Feature Development Notice */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-3">
+        <div className="flex items-center space-x-2 text-navy-900 font-bold font-heading text-lg">
+          <Layers className="w-5 h-5 text-emerald-600" />
+          <span>Sprint 1–4 Feature Placeholder</span>
+        </div>
+        <p className="text-sm text-slate-600 max-w-3xl leading-relaxed">
+          The foundation, architecture, authentication, role authorization, and centralized API services are fully operational. Domain modules (Course Management, Assessments, Job Postings, Candidate Tracking, Interview Prep) will be incrementally delivered across upcoming Agile sprints by the 5-developer team.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

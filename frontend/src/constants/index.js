@@ -1,0 +1,24 @@
+/**
+ * SKILL2CAREER Application Constants
+ */
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+
+export const USER_ROLES = {
+  LEARNER: "LEARNER",
+  INSTRUCTOR: "INSTRUCTOR",
+  COMPANY: "COMPANY",
+  ADMIN: "ADMIN",
+};
+
+export const STORAGE_KEYS = {
+  TOKEN: "skill2career_token",
+  USER: "skill2career_user",
+};
+
+export const ROUTES = {
+  HOME: "/",
+  LOGIN: "/login",
+  REGISTER: "/register",
+  DASHBOARD: "/dashboard",
+};
