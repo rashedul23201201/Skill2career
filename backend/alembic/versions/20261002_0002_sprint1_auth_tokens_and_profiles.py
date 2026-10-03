@@ -133,6 +133,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("logo_url", sa.String(length=255), nullable=True),
         sa.Column("banner_url", sa.String(length=255), nullable=True),
+        sa.Column("social_links", sa.JSON(), nullable=True),
         sa.Column("trade_license_url", sa.String(length=255), nullable=True),
         sa.Column("verification_status", sa.String(length=50), nullable=False, server_default="PENDING"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),

@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES, USER_ROLES } from "../../constants";
-import { LogOut, LayoutDashboard, User as UserIcon, Shield, GraduationCap } from "lucide-react";
+import { LogOut, LayoutDashboard, User as UserIcon, Shield, Building2, GraduationCap } from "lucide-react";
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -47,6 +47,7 @@ export const Navbar = () => {
       case USER_ROLES.COMPANY:
         return [
           { name: "Home", path: ROUTES.HOME },
+          { name: "Company Dashboard", path: ROUTES.COMPANY_DASHBOARD },
           { name: "Verification", path: ROUTES.COMPANY_VERIFICATION },
           { name: "Jobs & Internships", path: ROUTES.JOBS },
           { name: "Forum", path: ROUTES.FORUM },
@@ -130,6 +131,15 @@ export const Navbar = () => {
                       >
                         <UserIcon className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Profile</span>
+                      </Link>
+                    )}
+                    {user?.role === USER_ROLES.COMPANY && (
+                      <Link
+                        to={ROUTES.COMPANY_DASHBOARD}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                      >
+                        <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Company Portal</span>
                       </Link>
                     )}
                     {user?.role === USER_ROLES.INSTRUCTOR && (

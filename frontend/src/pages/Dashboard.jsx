@@ -101,50 +101,40 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Company Verification Banner & Quick Action (SKL-2) */}
+      {/* Company Profile Quick Action Banner (SKL-2 & SKL-3) */}
       {user?.role === "COMPANY" && (
-        <div
-          className={`rounded-2xl p-6 sm:p-7 border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 ${
-            user?.is_verified
-              ? "bg-emerald-50 border-emerald-200 text-emerald-950"
-              : "bg-amber-50 border-amber-200 text-amber-950"
-          }`}
-        >
-          <div className="space-y-1.5">
+        <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-blue-950 rounded-2xl p-6 sm:p-7 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 z-10">
             <div className="flex items-center space-x-2">
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
-                  user?.is_verified
-                    ? "bg-emerald-200 text-emerald-800"
-                    : "bg-amber-200 text-amber-900"
-                }`}
-              >
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
+                user?.is_verified
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+              }`}>
                 {user?.is_verified ? "Verified Company" : "Verification Required"}
               </span>
-              <span className="text-xs text-slate-500 font-mono">SKL-2</span>
+              <span className="text-xs text-blue-200">Company Profile & Branding Console</span>
             </div>
-            <h2 className="text-xl font-bold font-heading">
-              {user?.is_verified
-                ? "Enterprise Employer Authorization Active"
-                : "Company Account Pending Verification"}
+            <h2 className="text-xl sm:text-2xl font-bold font-heading">
+              Company Dashboard & Recruitment Hub
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
-              {user?.is_verified
-                ? "Your company trade license and credentials are fully verified. Job and internship publishing is active."
-                : "Your company account is currently pending administrative verification. Job and internship publishing is disabled until verified."}
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              Manage your company branding assets (logo & cover banner), verified badges, candidate pipeline, and public profile view for job seekers.
             </p>
           </div>
-          <div className="flex items-center space-x-3 flex-shrink-0">
+          <div className="flex items-center space-x-3 z-10 flex-shrink-0">
             <Link
               to={ROUTES.COMPANY_VERIFICATION}
-              className={`inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow transition-all ${
-                user?.is_verified
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "bg-amber-600 hover:bg-amber-700"
-              }`}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow transition-all"
+            >
+              <span>Verification</span>
+            </Link>
+            <Link
+              to={ROUTES.COMPANY_DASHBOARD}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow transition-all hover:shadow-lg"
             >
               <Building2 className="w-4 h-4" />
-              <span>{user?.is_verified ? "View Verification" : "Complete Verification"}</span>
+              <span>Open Dashboard</span>
             </Link>
           </div>
         </div>

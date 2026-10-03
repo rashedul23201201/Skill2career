@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, Optional
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "success": False,
                 "message": "Validation error: " + "; ".join(errors),
                 "error_code": "VALIDATION_ERROR",
-                "details": exc.errors(),
+                "details": jsonable_encoder(exc.errors()),
             },
         )
 

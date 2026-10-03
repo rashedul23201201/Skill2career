@@ -11,6 +11,7 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import UserManagement from "../pages/admin/UserManagement";
 import CompanyVerifications from "../pages/admin/CompanyVerifications";
 import LearnerProfile from "../pages/learner/LearnerProfile";
+import { CompanyDashboard, CompanyPublicProfile } from "../pages/company";
 import CompanyVerification from "../pages/company/CompanyVerification";
 import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 import InstructorApply from "../pages/instructor/InstructorApply";
@@ -166,6 +167,28 @@ export const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* Protected Company Dashboard Route (SKL-3) */}
+        <Route
+          path={ROUTES.COMPANY_DASHBOARD}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CompanyDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/company/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CompanyDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Public Company Profile Route (SKL-3) */}
+        <Route path="/companies/:id" element={<CompanyPublicProfile />} />
+        <Route path="/company/:id" element={<CompanyPublicProfile />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />
