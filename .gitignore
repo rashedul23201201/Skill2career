@@ -77,3 +77,7 @@ Thumbs.db
 # Documentation / UI Mockups
 docs/
 
+# Uploads
+uploads/
+**/uploads/
+

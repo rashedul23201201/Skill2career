@@ -9,6 +9,7 @@ import VerifyEmail from "../pages/VerifyEmail";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import UserManagement from "../pages/admin/UserManagement";
+import LearnerProfile from "../pages/learner/LearnerProfile";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -83,6 +84,24 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Learner Profile Routes (SKL-51) */}
+        <Route
+          path={ROUTES.LEARNER_PROFILE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.PROFILE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerProfile />
             </ProtectedRoute>
           }
         />
