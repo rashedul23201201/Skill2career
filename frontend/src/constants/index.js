@@ -30,4 +30,6 @@ export const ROUTES = {
   JOBS: "/jobs",
   FORUM: "/forum",
   MOCK_TESTS: "/mock-tests",
+  LEARNER_PROFILE: "/learner/profile",
+  PROFILE: "/profile",
 };

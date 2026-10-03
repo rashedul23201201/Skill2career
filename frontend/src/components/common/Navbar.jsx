@@ -52,6 +52,7 @@ export const Navbar = () => {
       default:
         return [
           { name: "Home", path: ROUTES.HOME },
+          { name: "My Profile", path: ROUTES.LEARNER_PROFILE },
           { name: "Courses", path: ROUTES.COURSES },
           { name: "Mock Tests", path: ROUTES.MOCK_TESTS },
           { name: "Jobs & Internships", path: ROUTES.JOBS },
@@ -110,13 +111,24 @@ export const Navbar = () => {
                     <span>Admin Console</span>
                   </Link>
                 ) : (
-                  <Link
-                    to={ROUTES.DASHBOARD}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    <span>Dashboard</span>
-                  </Link>
+                  <div className="flex items-center space-x-2">
+                    <Link
+                      to={ROUTES.DASHBOARD}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                    >
+                      <LayoutDashboard className="w-3.5 h-3.5" />
+                      <span>Dashboard</span>
+                    </Link>
+                    {user?.role === USER_ROLES.LEARNER && (
+                      <Link
+                        to={ROUTES.LEARNER_PROFILE}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                      >
+                        <UserIcon className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Profile</span>
+                      </Link>
+                    )}
+                  </div>
                 )}
 
                 {/* User info & Role Badge */}

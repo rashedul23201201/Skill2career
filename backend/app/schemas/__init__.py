@@ -20,6 +20,13 @@ from app.schemas.admin import (
     AuditLogResponse,
 )
 
+from app.schemas.learner import (
+    LearnerProfileUpdateRequest,
+    LearnerProfileResponse,
+    ResumeUploadResponse,
+    ProfileCompletionBreakdown,
+)
+
 __all__ = [
     "UserRegisterRequest",
     "UserLoginRequest",
@@ -36,4 +43,8 @@ __all__ = [
     "UserRoleUpdateRequest",
     "PaginatedUserResponse",
     "AuditLogResponse",
+    "LearnerProfileUpdateRequest",
+    "LearnerProfileResponse",
+    "ResumeUploadResponse",
+    "ProfileCompletionBreakdown",
 ]
