@@ -34,4 +34,7 @@ export const ROUTES = {
   COMPANY_VERIFICATION: "/company/verification",
   ADMIN_VERIFICATIONS: "/admin/verifications",
   PROFILE: "/profile",
+  INSTRUCTOR_DASHBOARD: "/instructor/dashboard",
+  INSTRUCTOR_PROFILE: "/instructor/profile",
+  INSTRUCTOR_APPLY: "/instructor/apply",
 };

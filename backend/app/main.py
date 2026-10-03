@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings, setup_logging
 from app.core.exceptions import register_exception_handlers
-from app.routers import health_router, auth_router, admin_router, learner_router, company_router
+from app.routers import health_router, auth_router, admin_router, learner_router, company_router, instructor_router
 
 # Setup application logging
 setup_logging()
@@ -37,7 +37,7 @@ app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(learner_router, prefix=settings.API_V1_STR)
 app.include_router(company_router, prefix=settings.API_V1_STR)
-
+app.include_router(instructor_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", tags=["Root"])

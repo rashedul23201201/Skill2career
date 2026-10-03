@@ -33,6 +33,13 @@ from app.schemas.company import (
     PendingCompanyVerificationItem,
     JobCreateRequest,
 )
+from app.schemas.instructor import (
+    InstructorApplicationRequest,
+    InstructorProfileUpdateRequest,
+    InstructorProfileResponse,
+    InstructorStatusUpdateRequest,
+    InstructorDashboardStats,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -59,5 +66,10 @@ __all__ = [
     "AdminCompanyVerificationAction",
     "PendingCompanyVerificationItem",
     "JobCreateRequest",
+    "InstructorApplicationRequest",
+    "InstructorProfileUpdateRequest",
+    "InstructorProfileResponse",
+    "InstructorStatusUpdateRequest",
+    "InstructorDashboardStats",
 ]
 

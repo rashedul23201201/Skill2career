@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import adminService from "../../services/adminService";
+import instructorService from "../../services/instructorService";
 import { ROUTES } from "../../constants";
 import {
   Users,
@@ -18,13 +19,18 @@ import {
   UserCheck,
   UserX,
   RefreshCw,
+  Award,
+  Video,
+  ExternalLink,
 } from "lucide-react";
 
 export const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [pendingInstructors, setPendingInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
   const [error, setError] = useState(null);
 
   const fetchDashboardData = async (isManualRefresh = false) => {
@@ -33,13 +39,15 @@ export const AdminDashboard = () => {
       else setLoading(true);
       setError(null);
 
-      const [statsRes, logsRes] = await Promise.all([
+      const [statsRes, logsRes, pendingInstRes] = await Promise.all([
         adminService.getOverviewStats(),
         adminService.getAuditLogs(10),
+        instructorService.getPendingInstructors().catch(() => ({ data: [] })),
       ]);
 
       if (statsRes?.data) setStats(statsRes.data);
       if (logsRes?.data) setAuditLogs(logsRes.data);
+      if (pendingInstRes?.data) setPendingInstructors(pendingInstRes.data);
     } catch (err) {
       console.error("Failed to load admin dashboard data:", err);
       setError("Unable to load administration telemetry. Please ensure the backend is running.");
@@ -52,6 +60,30 @@ export const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const handleUpdateInstructorStatus = async (profileId, status, applicantName) => {
+    try {
+      setProcessingId(profileId);
+      let reason = null;
+      if (status === "REJECTED") {
+        reason = prompt(
+          `Enter rejection reason or requested revision for ${applicantName}:`,
+          "Requires additional industry experience or accredited certificates."
+        );
+        if (reason === null) {
+          setProcessingId(null);
+          return;
+        }
+      }
+      await instructorService.updateInstructorStatus(profileId, status, reason);
+      await fetchDashboardData(true);
+    } catch (err) {
+      console.error("Failed to update instructor status:", err);
+      alert(err.response?.data?.message || "Failed to update instructor status.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const formatTimestamp = (dateString) => {
     if (!dateString) return "Recently";
@@ -454,6 +486,130 @@ export const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Pending Instructor Onboarding Applications (SKL-52) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Award className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-navy-950 font-heading">
+                Pending Instructor Accreditations (SKL-52)
+              </h2>
+              <p className="text-xs text-slate-500">
+                Audit credentials, teaching domains, and sample lectures awaiting administrative sign-off
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+            {pendingInstructors.length} Awaiting Audit
+          </span>
+        </div>
+
+        {pendingInstructors.length === 0 ? (
+          <div className="py-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center space-y-2">
+            <UserCheck className="w-8 h-8 text-slate-300" />
+            <p>No pending instructor applications at this time. All submissions have been processed.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4">Applicant</th>
+                  <th className="py-3 px-4">Designation & Institution</th>
+                  <th className="py-3 px-4">Domain & Qualification</th>
+                  <th className="py-3 px-4">Sample Video / Links</th>
+                  <th className="py-3 px-4 text-right">Administrative Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendingInstructors.map((inst) => (
+                  <tr key={inst.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-navy-950">
+                        {inst.first_name} {inst.last_name}
+                      </div>
+                      <div className="text-[11px] text-slate-400">{inst.email}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-semibold text-navy-900">{inst.designation || "Educator"}</div>
+                      <div className="text-[11px] text-slate-500">{inst.institution || "Independent"}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded inline-block">
+                        {inst.expertise_domain || "General Tech"}
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {inst.qualification || "Degree not specified"} · {inst.years_experience || "N/A"} exp
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center space-x-2">
+                        {inst.intro_video_url ? (
+                          <a
+                            href={inst.intro_video_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center space-x-1 px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-[11px] font-semibold"
+                          >
+                            <Video className="w-3 h-3" />
+                            <span>Lecture Video</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">No video</span>
+                        )}
+                        {inst.linkedin_url && (
+                          <a
+                            href={inst.linkedin_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center space-x-1 px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 text-[11px] font-semibold"
+                          >
+                            <span>Profile</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-right space-x-2">
+                      <button
+                        onClick={() =>
+                          handleUpdateInstructorStatus(
+                            inst.id,
+                            "APPROVED",
+                            `${inst.first_name} ${inst.last_name}`
+                          )
+                        }
+                        disabled={processingId === inst.id}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all disabled:opacity-50"
+                      >
+                        {processingId === inst.id ? "Processing..." : "Approve & Elevate"}
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateInstructorStatus(
+                            inst.id,
+                            "REJECTED",
+                            `${inst.first_name} ${inst.last_name}`
+                          )
+                        }
+                        disabled={processingId === inst.id}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-all disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Recent Activity Feed */}

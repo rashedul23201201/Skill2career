@@ -13,6 +13,7 @@ import {
   Layers,
   Building2,
   Clock,
+  GraduationCap,
 } from "lucide-react";
 
 export const Dashboard = () => {
@@ -144,6 +145,35 @@ export const Dashboard = () => {
             >
               <Building2 className="w-4 h-4" />
               <span>{user?.is_verified ? "View Verification" : "Complete Verification"}</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Instructor Dashboard Quick Action Banner (SKL-52) */}
+      {user?.role === "INSTRUCTOR" && (
+        <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-navy-950 rounded-2xl p-6 sm:p-7 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 z-10">
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                SKL-52 Module Active
+              </span>
+              <span className="text-xs text-emerald-200">Instructor Workspace & Accreditation</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold font-heading">
+              Instructor Dashboard & Curriculum Console
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              Manage your course modules, track total enrolled learners, schedule mock interview sessions, and keep your accreditation profile verified.
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 z-10 flex-shrink-0">
+            <Link
+              to={ROUTES.INSTRUCTOR_DASHBOARD}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow transition-all hover:shadow-lg"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Open Instructor Portal</span>
             </Link>
           </div>
         </div>
