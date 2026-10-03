@@ -32,4 +32,6 @@ export const ROUTES = {
   MOCK_TESTS: "/mock-tests",
   LEARNER_PROFILE: "/learner/profile",
   PROFILE: "/profile",
+  COMPANY_DASHBOARD: "/company/dashboard",
+  COMPANY_PUBLIC: "/companies/:id",
 };

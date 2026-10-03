@@ -14,9 +14,12 @@ from app.schemas.admin import (
     AuditLogResponse,
 )
 from app.services.admin_service import AdminService
+from app.services.company_service import CompanyService
+from app.schemas.company import CompanyModerationRequest, CompanyProfileResponse
 
 router = APIRouter(prefix="/admin", tags=["Admin Management"])
 admin_service = AdminService()
+company_service = CompanyService()
 
 
 @router.get(
@@ -169,4 +172,33 @@ def get_audit_logs(
         success=True,
         message="Audit logs retrieved successfully",
         data=logs
+    )
+
+
+@router.patch(
+    "/companies/{company_id}/moderate",
+    response_model=ApiResponse[CompanyProfileResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Admin moderation for company profile and verification (SKL-3 / SKL-50)"
+)
+def moderate_company(
+    company_id: int,
+    payload: CompanyModerationRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[CompanyProfileResponse]:
+    """Moderate company profile details, verification status, and log administrative audit trail."""
+    client_ip = request.client.host if request.client else None
+    result = company_service.moderate_company(
+        db=db,
+        admin_user=admin_user,
+        company_id=company_id,
+        payload=payload,
+        ip_address=client_ip
+    )
+    return ApiResponse[CompanyProfileResponse](
+        success=True,
+        message="Company profile successfully moderated",
+        data=result,
     )

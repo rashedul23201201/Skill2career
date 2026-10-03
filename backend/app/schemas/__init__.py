@@ -27,6 +27,14 @@ from app.schemas.learner import (
     ProfileCompletionBreakdown,
 )
 
+from app.schemas.company import (
+    CompanyProfileUpdateRequest,
+    CompanyProfileResponse,
+    PublicCompanyProfileResponse,
+    AssetUploadResponse,
+    CompanyModerationRequest,
+)
+
 __all__ = [
     "UserRegisterRequest",
     "UserLoginRequest",
@@ -47,4 +55,9 @@ __all__ = [
     "LearnerProfileResponse",
     "ResumeUploadResponse",
     "ProfileCompletionBreakdown",
+    "CompanyProfileUpdateRequest",
+    "CompanyProfileResponse",
+    "PublicCompanyProfileResponse",
+    "AssetUploadResponse",
+    "CompanyModerationRequest",
 ]

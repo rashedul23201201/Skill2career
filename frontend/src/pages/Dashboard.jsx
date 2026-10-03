@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
+  Building2,
 } from "lucide-react";
 
 export const Dashboard = () => {
@@ -93,6 +94,35 @@ export const Dashboard = () => {
             >
               <User className="w-4 h-4" />
               <span>Open Learner Profile</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Company Profile Quick Action Banner (SKL-3) */}
+      {user?.role === "COMPANY" && (
+        <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-blue-950 rounded-2xl p-6 sm:p-7 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 z-10">
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                SKL-3 Module Active
+              </span>
+              <span className="text-xs text-blue-200">Company Profile & Branding Console</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold font-heading">
+              Company Dashboard & Recruitment Hub
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              Manage your company branding assets (logo & cover banner), verified badges, candidate pipeline, and public profile view for job seekers.
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 z-10 flex-shrink-0">
+            <Link
+              to={ROUTES.COMPANY_DASHBOARD}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow transition-all hover:shadow-lg"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Open Company Dashboard</span>
             </Link>
           </div>
         </div>

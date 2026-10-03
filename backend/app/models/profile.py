@@ -70,6 +70,7 @@ class CompanyProfile(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     banner_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    social_links: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     trade_license_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     verification_status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
 

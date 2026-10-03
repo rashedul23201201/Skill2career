@@ -73,10 +73,18 @@ def seed_database():
                 "profile": {
                     "type": "company",
                     "company_name": "Brain Station 23 Ltd.",
+                    "tagline": "Global Digital Solutions & Enterprise Engineering Partner",
+                    "description": "Leading custom software development and IT solutions provider in Bangladesh, serving global Fortune 500 and enterprise clients with 700+ engineers.",
                     "industry": "Enterprise Software & Cloud",
+                    "company_size": "500+",
                     "contact_phone": "+8801700000000",
                     "website_url": "https://brainstation-23.com",
                     "office_address": "8th Floor, Plot 2, Block A, Dhaka 1206",
+                    "social_links": {
+                        "linkedin": "https://linkedin.com/company/brainstation23",
+                        "github": "https://github.com/brainstation-23",
+                        "facebook": "https://facebook.com/brainstation23",
+                    },
                     "verification_status": "APPROVED",
                 }
             }
@@ -128,10 +136,14 @@ def seed_database():
                     profile = CompanyProfile(
                         user_id=user.id,
                         company_name=profile_data["company_name"],
+                        tagline=profile_data.get("tagline"),
+                        description=profile_data.get("description"),
                         industry=profile_data["industry"],
+                        company_size=profile_data.get("company_size"),
                         contact_phone=profile_data["contact_phone"],
                         website_url=profile_data["website_url"],
                         office_address=profile_data["office_address"],
+                        social_links=profile_data.get("social_links", {}),
                         verification_status=profile_data["verification_status"],
                     )
                     db.add(profile)
