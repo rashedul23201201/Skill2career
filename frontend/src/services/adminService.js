@@ -59,6 +59,26 @@ export const adminService = {
     });
     return response.data;
   },
+
+  /**
+   * Fetch all companies awaiting administrative verification review (SKL-2).
+   */
+  async getPendingCompanyVerifications() {
+    const response = await api.get("/admin/companies/pending-verifications");
+    return response.data;
+  },
+
+  /**
+   * Approve or reject a company's verification dossier (SKL-2).
+   */
+  async verifyCompany(companyId, { action, notes = "" }) {
+    const response = await api.post(`/admin/companies/${companyId}/verify`, {
+      action,
+      notes,
+    });
+    return response.data;
+  },
 };
 
 export default adminService;
+

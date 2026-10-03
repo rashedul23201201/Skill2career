@@ -30,6 +30,7 @@ export const Navbar = () => {
       case USER_ROLES.ADMIN:
         return [
           { name: "Admin Dashboard", path: ROUTES.ADMIN_DASHBOARD },
+          { name: "Verifications", path: ROUTES.ADMIN_VERIFICATIONS },
           { name: "User Management", path: ROUTES.ADMIN_USERS },
           { name: "Courses", path: ROUTES.COURSES },
           { name: "Jobs", path: ROUTES.JOBS },
@@ -46,6 +47,7 @@ export const Navbar = () => {
       case USER_ROLES.COMPANY:
         return [
           { name: "Home", path: ROUTES.HOME },
+          { name: "Verification", path: ROUTES.COMPANY_VERIFICATION },
           { name: "Jobs & Internships", path: ROUTES.JOBS },
           { name: "Forum", path: ROUTES.FORUM },
         ];

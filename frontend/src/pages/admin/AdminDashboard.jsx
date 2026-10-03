@@ -239,7 +239,10 @@ export const AdminDashboard = () => {
         </div>
 
         {/* Metric 4: Pending Approvals */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:border-slate-300 transition-all">
+        <Link
+          to={ROUTES.ADMIN_VERIFICATIONS}
+          className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:border-amber-400 hover:shadow-md transition-all block cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Pending Approvals
@@ -252,11 +255,12 @@ export const AdminDashboard = () => {
             <h3 className="text-3xl font-extrabold text-navy-950 font-heading">
               {loading ? "--" : stats?.pending_approvals ?? 0}
             </h3>
-            <p className="mt-1 text-xs text-amber-700 font-medium">
-              {stats?.pending_approvals > 0 ? "Action required by admin" : "All approvals processed"}
+            <p className="mt-1 text-xs text-amber-700 font-medium flex items-center justify-between">
+              <span>{stats?.pending_approvals > 0 ? "Action required by admin" : "All approvals processed"}</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-1 text-amber-600" />
             </p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Role Breakdown Bar */}
@@ -359,12 +363,12 @@ export const AdminDashboard = () => {
                 Audit employer credentials, inspect trade licenses, approve corporate registrations, and unlock job-posting access.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
               <Link
-                to={`${ROUTES.ADMIN_USERS}?role=COMPANY`}
+                to={ROUTES.ADMIN_VERIFICATIONS}
                 className="inline-flex items-center space-x-1.5 text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors"
               >
-                <span>Review Companies</span>
+                <span>Review Company Dossiers</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

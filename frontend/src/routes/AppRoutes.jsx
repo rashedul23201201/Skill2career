@@ -9,7 +9,9 @@ import VerifyEmail from "../pages/VerifyEmail";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import UserManagement from "../pages/admin/UserManagement";
+import CompanyVerifications from "../pages/admin/CompanyVerifications";
 import LearnerProfile from "../pages/learner/LearnerProfile";
+import CompanyVerification from "../pages/company/CompanyVerification";
 import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 import InstructorApply from "../pages/instructor/InstructorApply";
 import NotFound from "../pages/NotFound";
@@ -108,6 +110,16 @@ export const AppRoutes = () => {
           }
         />
 
+        {/* Protected Company Verification Routes (SKL-2) */}
+        <Route
+          path={ROUTES.COMPANY_VERIFICATION}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CompanyVerification />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Instructor Application Route (SKL-52) */}
         <Route path={ROUTES.INSTRUCTOR_APPLY} element={<InstructorApply />} />
 
@@ -129,7 +141,7 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Protected Admin Routes (SKL-50 / SKL-24) */}
+        {/* Protected Admin Routes (SKL-50 / SKL-24 / SKL-2 / SKL-52) */}
         <Route
           path={ROUTES.ADMIN_DASHBOARD}
           element={
@@ -143,6 +155,14 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
               <UserManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_VERIFICATIONS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+              <CompanyVerifications />
             </ProtectedRoute>
           }
         />

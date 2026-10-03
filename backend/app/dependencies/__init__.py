@@ -7,6 +7,7 @@ from app.dependencies.auth import (
     require_learner,
     require_instructor,
     require_company,
+    require_verified_company,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "require_learner",
     "require_instructor",
     "require_company",
+    "require_verified_company",
 ]
