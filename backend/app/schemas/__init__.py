@@ -26,6 +26,13 @@ from app.schemas.learner import (
     ResumeUploadResponse,
     ProfileCompletionBreakdown,
 )
+from app.schemas.instructor import (
+    InstructorApplicationRequest,
+    InstructorProfileUpdateRequest,
+    InstructorProfileResponse,
+    InstructorStatusUpdateRequest,
+    InstructorDashboardStats,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -47,4 +54,9 @@ __all__ = [
     "LearnerProfileResponse",
     "ResumeUploadResponse",
     "ProfileCompletionBreakdown",
+    "InstructorApplicationRequest",
+    "InstructorProfileUpdateRequest",
+    "InstructorProfileResponse",
+    "InstructorStatusUpdateRequest",
+    "InstructorDashboardStats",
 ]

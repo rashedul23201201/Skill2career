@@ -13,10 +13,16 @@ from app.schemas.admin import (
     UserRoleUpdateRequest,
     AuditLogResponse,
 )
+from app.schemas.instructor import (
+    InstructorProfileResponse,
+    InstructorStatusUpdateRequest,
+)
 from app.services.admin_service import AdminService
+from app.services.instructor_service import InstructorService
 
 router = APIRouter(prefix="/admin", tags=["Admin Management"])
 admin_service = AdminService()
+instructor_service = InstructorService()
 
 
 @router.get(
@@ -169,4 +175,55 @@ def get_audit_logs(
         success=True,
         message="Audit logs retrieved successfully",
         data=logs
+    )
+
+
+@router.get(
+    "/instructors/pending",
+    response_model=ApiResponse[List[InstructorProfileResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="List pending instructor applications for administrative review (SKL-52)"
+)
+def get_pending_instructors(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[List[InstructorProfileResponse]]:
+    """Retrieve instructor onboarding applications awaiting review."""
+    pending = instructor_service.get_pending_instructors(db, skip=skip, limit=limit)
+    return ApiResponse[List[InstructorProfileResponse]](
+        success=True,
+        message="Pending instructor applications retrieved successfully",
+        data=pending
+    )
+
+
+@router.patch(
+    "/instructors/{profile_id}/status",
+    response_model=ApiResponse[InstructorProfileResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Approve, reject, or suspend an instructor account (SKL-52)"
+)
+def update_instructor_status(
+    profile_id: int,
+    payload: InstructorStatusUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[InstructorProfileResponse]:
+    """Approve or reject instructor credentials. Approval automatically promotes the user role to INSTRUCTOR."""
+    client_ip = request.client.host if request.client else "unknown"
+    updated = instructor_service.update_instructor_status(
+        db=db,
+        admin_user=admin_user,
+        profile_id=profile_id,
+        new_status=payload.status,
+        reason=payload.reason,
+        ip_address=client_ip
+    )
+    return ApiResponse[InstructorProfileResponse](
+        success=True,
+        message=f"Instructor onboarding status successfully updated to {payload.status.upper()}",
+        data=updated
     )
