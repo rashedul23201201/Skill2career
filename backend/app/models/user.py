@@ -58,7 +58,7 @@ class User(Base):
     # Profile relationships
     learner_profile = relationship("LearnerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     instructor_profile = relationship("InstructorProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    company_profile = relationship("CompanyProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    company_profile = relationship("CompanyProfile", back_populates="user", uselist=False, cascade="all, delete-orphan", foreign_keys="CompanyProfile.user_id")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email='{self.email}' role='{self.role}'>"

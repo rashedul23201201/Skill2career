@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
+  Building2,
+  Clock,
 } from "lucide-react";
 
 export const Dashboard = () => {
@@ -93,6 +95,55 @@ export const Dashboard = () => {
             >
               <User className="w-4 h-4" />
               <span>Open Learner Profile</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Company Verification Banner & Quick Action (SKL-2) */}
+      {user?.role === "COMPANY" && (
+        <div
+          className={`rounded-2xl p-6 sm:p-7 border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 ${
+            user?.is_verified
+              ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+              : "bg-amber-50 border-amber-200 text-amber-950"
+          }`}
+        >
+          <div className="space-y-1.5">
+            <div className="flex items-center space-x-2">
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
+                  user?.is_verified
+                    ? "bg-emerald-200 text-emerald-800"
+                    : "bg-amber-200 text-amber-900"
+                }`}
+              >
+                {user?.is_verified ? "Verified Company" : "Verification Required"}
+              </span>
+              <span className="text-xs text-slate-500 font-mono">SKL-2</span>
+            </div>
+            <h2 className="text-xl font-bold font-heading">
+              {user?.is_verified
+                ? "Enterprise Employer Authorization Active"
+                : "Company Account Pending Verification"}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
+              {user?.is_verified
+                ? "Your company trade license and credentials are fully verified. Job and internship publishing is active."
+                : "Your company account is currently pending administrative verification. Job and internship publishing is disabled until verified."}
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 flex-shrink-0">
+            <Link
+              to={ROUTES.COMPANY_VERIFICATION}
+              className={`inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow transition-all ${
+                user?.is_verified
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-amber-600 hover:bg-amber-700"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>{user?.is_verified ? "View Verification" : "Complete Verification"}</span>
             </Link>
           </div>
         </div>
