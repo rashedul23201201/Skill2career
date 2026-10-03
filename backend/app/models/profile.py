@@ -72,9 +72,15 @@ class CompanyProfile(Base):
     banner_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     social_links: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     trade_license_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    registration_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     verification_status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_by_admin_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    verification_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
-    user = relationship("User", back_populates="company_profile")
+    user = relationship("User", back_populates="company_profile", foreign_keys=[user_id])
+    verified_by_admin = relationship("User", foreign_keys=[verified_by_admin_id])

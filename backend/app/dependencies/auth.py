@@ -118,3 +118,28 @@ require_admin = require_role(UserRole.ADMIN)
 require_learner = require_role(UserRole.LEARNER)
 require_instructor = require_role(UserRole.INSTRUCTOR)
 require_company = require_role(UserRole.COMPANY)
+
+
+def require_verified_company(
+    request: Request,
+    current_user: User = Depends(require_company),
+) -> User:
+    """Gatekeeper dependency enforcing that the user has COMPANY role, is_verified == True,
+    and company_profile.verification_status == 'APPROVED' (SKL-2).
+    If unverified: raises HTTP 403 Forbidden with error code COMPANY_NOT_VERIFIED."""
+    profile = current_user.company_profile
+    is_profile_approved = bool(profile and profile.verification_status == "APPROVED")
+
+    if not current_user.is_verified or not is_profile_approved:
+        client_ip = request.client.host if request.client else "unknown"
+        status_val = profile.verification_status if profile else "NONE"
+        logger.warning(
+            "Security 403 Forbidden: Company User ID %s denied access to %s [%s] from IP %s. Account unverified (is_verified=%s, status=%s)",
+            current_user.id, request.url.path, request.method, client_ip, current_user.is_verified, status_val
+        )
+        raise ForbiddenException(
+            message="Your company account is currently pending administrative verification. Job and internship publishing is disabled until verified.",
+            error_code="COMPANY_NOT_VERIFIED"
+        )
+    return current_user
+

@@ -26,6 +26,20 @@ from app.schemas.learner import (
     ResumeUploadResponse,
     ProfileCompletionBreakdown,
 )
+from app.schemas.company import (
+    CompanyVerificationRequest,
+    CompanyVerificationStatusResponse,
+    AdminCompanyVerificationAction,
+    PendingCompanyVerificationItem,
+    JobCreateRequest,
+)
+from app.schemas.instructor import (
+    InstructorApplicationRequest,
+    InstructorProfileUpdateRequest,
+    InstructorProfileResponse,
+    InstructorStatusUpdateRequest,
+    InstructorDashboardStats,
+)
 
 from app.schemas.company import (
     CompanyProfileUpdateRequest,
@@ -60,4 +74,15 @@ __all__ = [
     "PublicCompanyProfileResponse",
     "AssetUploadResponse",
     "CompanyModerationRequest",
+    "CompanyVerificationRequest",
+    "CompanyVerificationStatusResponse",
+    "AdminCompanyVerificationAction",
+    "PendingCompanyVerificationItem",
+    "JobCreateRequest",
+    "InstructorApplicationRequest",
+    "InstructorProfileUpdateRequest",
+    "InstructorProfileResponse",
+    "InstructorStatusUpdateRequest",
+    "InstructorDashboardStats",
 ]
+

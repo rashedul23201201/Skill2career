@@ -1,11 +1,11 @@
 import api from "./api";
 
 /**
- * Service for Company Profile Management, Branding Assets, Public Views, and Moderation (SKL-3).
+ * Service for Company Profile Management, Branding Assets, Public Views, Verification, and Jobs (SKL-2 & SKL-3).
  */
 export const companyService = {
   /**
-   * Fetch authenticated company's complete profile.
+   * Fetch authenticated company's complete profile (SKL-3).
    */
   async getProfile() {
     const response = await api.get("/companies/profile/me");
@@ -13,7 +13,7 @@ export const companyService = {
   },
 
   /**
-   * Update company profile details (tagline, size, address, social links, website).
+   * Update company profile details (tagline, size, address, social links, website) (SKL-3).
    * @param {Object} data - Profile fields to update
    */
   async updateProfile(data) {
@@ -22,7 +22,7 @@ export const companyService = {
   },
 
   /**
-   * Upload company logo image (PNG, JPG, WEBP, max 5MB).
+   * Upload company logo image (PNG, JPG, WEBP, max 5MB) (SKL-3).
    * @param {File} file - Image file object from file input
    */
   async uploadLogo(file) {
@@ -38,7 +38,7 @@ export const companyService = {
   },
 
   /**
-   * Upload company cover banner image (PNG, JPG, WEBP, max 5MB).
+   * Upload company cover banner image (PNG, JPG, WEBP, max 5MB) (SKL-3).
    * @param {File} file - Image file object from file input
    */
   async uploadBanner(file) {
@@ -54,7 +54,7 @@ export const companyService = {
   },
 
   /**
-   * Fetch public company profile details accessible by Learners and Guests.
+   * Fetch public company profile details accessible by Learners and Guests (SKL-3).
    * @param {number|string} companyId - ID of company profile
    */
   async getPublicProfile(companyId) {
@@ -63,12 +63,36 @@ export const companyService = {
   },
 
   /**
-   * Admin content moderation for company accounts.
+   * Admin content moderation for company accounts (SKL-3).
    * @param {number|string} companyId - ID of company profile
    * @param {Object} data - Moderation action and notes
    */
   async moderateCompany(companyId, data) {
     const response = await api.patch(`/admin/companies/${companyId}/moderate`, data);
+    return response.data;
+  },
+
+  /**
+   * Fetch current verification status and dossier details for authenticated company (SKL-2).
+   */
+  async getVerificationStatus() {
+    const response = await api.get("/companies/verification-status");
+    return response.data;
+  },
+
+  /**
+   * Submit official trade license and credentials dossier for verification review (SKL-2).
+   */
+  async submitVerificationRequest(payload) {
+    const response = await api.post("/companies/verification-request", payload);
+    return response.data;
+  },
+
+  /**
+   * Simulated job creation endpoint (enforces require_verified_company gatekeeper) (SKL-2).
+   */
+  async createJob(payload) {
+    const response = await api.post("/companies/jobs", payload);
     return response.data;
   },
 };

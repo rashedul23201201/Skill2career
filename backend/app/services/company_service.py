@@ -24,6 +24,9 @@ from app.schemas.company import (
     PublicCompanyProfileResponse,
     AssetUploadResponse,
     CompanyModerationRequest,
+    CompanyVerificationRequest,
+    CompanyVerificationStatusResponse,
+    PendingCompanyVerificationItem,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +48,7 @@ BANNERS_DIR = BASE_UPLOAD_DIR / "banners"
 
 
 class CompanyService:
-    """Service handling Company Profile Management, Branding Assets, Public Views, and Moderation (SKL-3)."""
+    """Service handling Company Profile Management, Branding Assets, Verification, and Moderation (SKL-2 & SKL-3)."""
 
     def __init__(
         self,
@@ -102,9 +105,6 @@ class CompanyService:
             )
 
         # 4. Deep binary magic bytes inspection
-        # PNG: \x89PNG\r\n\x1a\n
-        # JPEG: \xff\xd8\xff
-        # WEBP: RIFF....WEBP
         is_png = contents.startswith(b"\x89PNG\r\n\x1a\n")
         is_jpeg = contents.startswith(b"\xff\xd8\xff")
         is_webp = contents.startswith(b"RIFF") and len(contents) >= 12 and contents[8:12] == b"WEBP"
@@ -230,7 +230,6 @@ class CompanyService:
         if payload.social_links is not None:
             existing_socials = profile.social_links if isinstance(profile.social_links, dict) else {}
             merged_socials = {**existing_socials, **payload.social_links}
-            # Clean empty keys
             cleaned_socials = {k: v for k, v in merged_socials.items() if v}
             profile.social_links = cleaned_socials
 
@@ -330,6 +329,31 @@ class CompanyService:
             created_at=profile.created_at,
         )
 
+    def serve_asset(self, asset_type: str, filename: str) -> FileResponse:
+        """Deliver company branding asset with path-traversal prevention."""
+        cleaned_type = asset_type.lower().strip()
+        if cleaned_type not in {"logo", "banner"}:
+            raise BadRequestException(message="Invalid asset category.", error_code="INVALID_ASSET_TYPE")
+
+        safe_filename = os.path.basename(filename)
+        target_dir = LOGOS_DIR if cleaned_type == "logo" else BANNERS_DIR
+        target_path = target_dir / safe_filename
+
+        if not target_path.exists() or not target_path.is_file():
+            raise NotFoundException(message="Requested image asset was not found.", error_code="ASSET_NOT_FOUND")
+
+        file_ext = target_path.suffix.lower()
+        if file_ext == ".png":
+            media_type = "image/png"
+        elif file_ext in {".jpg", ".jpeg"}:
+            media_type = "image/jpeg"
+        elif file_ext == ".webp":
+            media_type = "image/webp"
+        else:
+            media_type = "application/octet-stream"
+
+        return FileResponse(path=str(target_path), media_type=media_type)
+
     def moderate_company(
         self,
         db: Session,
@@ -396,28 +420,191 @@ class CompanyService:
         logger.info("Admin %d moderated company %d: action=%s", admin_user.id, company_id, action_name)
         return self.serialize_profile(profile.user, updated)
 
-    def serve_asset(self, asset_type: str, filename: str) -> FileResponse:
-        """Deliver company branding asset with path-traversal prevention."""
-        cleaned_type = asset_type.lower().strip()
-        if cleaned_type not in {"logo", "banner"}:
-            raise BadRequestException(message="Invalid asset category.", error_code="INVALID_ASSET_TYPE")
+    # ----------------------------------------------------
+    # SKL-2: Company Registration & Verification Handlers
+    # ----------------------------------------------------
 
-        # Sanitize filename
-        safe_filename = os.path.basename(filename)
-        target_dir = LOGOS_DIR if cleaned_type == "logo" else BANNERS_DIR
-        target_path = target_dir / safe_filename
+    def get_verification_status(self, db: Session, user: User) -> CompanyVerificationStatusResponse:
+        """Retrieve current verification state and dossier details for company user (SKL-2)."""
+        profile = self.get_or_create_profile(db, user)
+        return CompanyVerificationStatusResponse(
+            company_id=profile.id,
+            user_id=user.id,
+            company_name=profile.company_name,
+            is_verified=user.is_verified,
+            verification_status=profile.verification_status,
+            trade_license_url=profile.trade_license_url,
+            registration_number=profile.registration_number,
+            industry=profile.industry,
+            location=profile.location,
+            company_size=profile.company_size,
+            website_url=profile.website_url,
+            office_address=profile.office_address,
+            contact_person=profile.contact_person,
+            contact_phone=profile.contact_phone,
+            description=profile.description,
+            verified_at=profile.verified_at,
+            verified_by_admin_id=profile.verified_by_admin_id,
+            verification_notes=profile.verification_notes,
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
+        )
 
-        if not target_path.exists() or not target_path.is_file():
-            raise NotFoundException(message="Requested image asset was not found.", error_code="ASSET_NOT_FOUND")
+    def submit_verification_request(
+        self,
+        db: Session,
+        user: User,
+        payload: CompanyVerificationRequest
+    ) -> CompanyVerificationStatusResponse:
+        """Process company submission of trade license and credentials dossier for verification (SKL-2)."""
+        profile = self.get_or_create_profile(db, user)
 
-        file_ext = target_path.suffix.lower()
-        if file_ext == ".png":
-            media_type = "image/png"
-        elif file_ext in {".jpg", ".jpeg"}:
-            media_type = "image/jpeg"
-        elif file_ext == ".webp":
-            media_type = "image/webp"
-        else:
-            media_type = "application/octet-stream"
+        if not payload.trade_license_url or not payload.trade_license_url.strip():
+            raise BadRequestException(
+                message="An official trade license URL or document reference is required for verification",
+                error_code="TRADE_LICENSE_REQUIRED"
+            )
 
-        return FileResponse(path=str(target_path), media_type=media_type)
+        updated_profile = self.company_repo.submit_verification(db, profile, payload)
+
+        logger.info(
+            "Company verification dossier submitted for review: Company ID=%s, User ID=%s, Org='%s'",
+            updated_profile.id, user.id, updated_profile.company_name
+        )
+
+        return CompanyVerificationStatusResponse(
+            company_id=updated_profile.id,
+            user_id=user.id,
+            company_name=updated_profile.company_name,
+            is_verified=user.is_verified,
+            verification_status=updated_profile.verification_status,
+            trade_license_url=updated_profile.trade_license_url,
+            registration_number=updated_profile.registration_number,
+            industry=updated_profile.industry,
+            location=updated_profile.location,
+            company_size=updated_profile.company_size,
+            website_url=updated_profile.website_url,
+            office_address=updated_profile.office_address,
+            contact_person=updated_profile.contact_person,
+            contact_phone=updated_profile.contact_phone,
+            description=updated_profile.description,
+            verified_at=updated_profile.verified_at,
+            verified_by_admin_id=updated_profile.verified_by_admin_id,
+            verification_notes=updated_profile.verification_notes,
+            created_at=updated_profile.created_at,
+            updated_at=updated_profile.updated_at,
+        )
+
+    def get_pending_verifications(self, db: Session) -> List[PendingCompanyVerificationItem]:
+        """Fetch list of all companies currently awaiting administrative review (SKL-2)."""
+        pending_profiles = self.company_repo.get_pending_verifications(db)
+        items: List[PendingCompanyVerificationItem] = []
+
+        for p in pending_profiles:
+            user_email = p.user.email if p.user else "unknown"
+            items.append(
+                PendingCompanyVerificationItem(
+                    company_id=p.id,
+                    user_id=p.user_id,
+                    email=user_email,
+                    company_name=p.company_name,
+                    trade_license_url=p.trade_license_url,
+                    registration_number=p.registration_number,
+                    industry=p.industry,
+                    location=p.location,
+                    company_size=p.company_size,
+                    website_url=p.website_url,
+                    office_address=p.office_address,
+                    contact_person=p.contact_person,
+                    contact_phone=p.contact_phone,
+                    verification_status=p.verification_status,
+                    verification_notes=p.verification_notes,
+                    submitted_at=p.updated_at or p.created_at,
+                )
+            )
+
+        return items
+
+    def process_verification(
+        self,
+        db: Session,
+        admin_user: User,
+        company_id: int,
+        action: str,
+        notes: Optional[str] = None,
+        ip_address: str = "unknown"
+    ) -> CompanyVerificationStatusResponse:
+        """Admin execution to approve or reject a company verification dossier (SKL-2)."""
+        norm_action = action.strip().upper()
+        if norm_action not in ("APPROVE", "REJECT"):
+            raise BadRequestException(
+                message=f"Invalid verification action '{action}'. Must be 'APPROVE' or 'REJECT'.",
+                error_code="INVALID_VERIFICATION_ACTION"
+            )
+
+        profile = self.company_repo.get_by_id(db, company_id)
+        if not profile:
+            raise NotFoundException(
+                message=f"Company profile with ID {company_id} does not exist",
+                error_code="COMPANY_NOT_FOUND"
+            )
+
+        company_user = profile.user
+        if not company_user:
+            raise NotFoundException(
+                message="Associated user account for company profile not found",
+                error_code="USER_NOT_FOUND"
+            )
+
+        updated_profile = self.company_repo.verify_company(
+            db=db,
+            profile=profile,
+            user=company_user,
+            action=norm_action,
+            admin_id=admin_user.id,
+            notes=notes
+        )
+
+        audit_action = "COMPANY_VERIFICATION_APPROVED" if norm_action == "APPROVE" else "COMPANY_VERIFICATION_REJECTED"
+
+        self.audit_repo.create(
+            db=db,
+            admin_id=admin_user.id,
+            target_user_id=company_user.id,
+            action=audit_action,
+            details={
+                "decision": norm_action,
+                "notes": notes,
+                "company_id": updated_profile.id,
+                "company_name": updated_profile.company_name,
+            },
+            ip_address=ip_address
+        )
+
+        logger.info(
+            "Admin ID=%s executed %s on Company ID=%s (User ID=%s). Status now: %s",
+            admin_user.id, norm_action, profile.id, company_user.id, updated_profile.verification_status
+        )
+
+        return CompanyVerificationStatusResponse(
+            company_id=updated_profile.id,
+            user_id=company_user.id,
+            company_name=updated_profile.company_name,
+            is_verified=company_user.is_verified,
+            verification_status=updated_profile.verification_status,
+            trade_license_url=updated_profile.trade_license_url,
+            registration_number=updated_profile.registration_number,
+            industry=updated_profile.industry,
+            location=updated_profile.location,
+            company_size=updated_profile.company_size,
+            website_url=updated_profile.website_url,
+            office_address=updated_profile.office_address,
+            contact_person=updated_profile.contact_person,
+            contact_phone=updated_profile.contact_phone,
+            description=updated_profile.description,
+            verified_at=updated_profile.verified_at,
+            verified_by_admin_id=updated_profile.verified_by_admin_id,
+            verification_notes=updated_profile.verification_notes,
+            created_at=updated_profile.created_at,
+            updated_at=updated_profile.updated_at,
+        )
