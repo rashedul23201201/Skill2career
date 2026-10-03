@@ -13,10 +13,18 @@ from app.schemas.admin import (
     UserRoleUpdateRequest,
     AuditLogResponse,
 )
+from app.schemas.company import (
+    PendingCompanyVerificationItem,
+    AdminCompanyVerificationAction,
+    CompanyVerificationStatusResponse,
+)
 from app.services.admin_service import AdminService
+from app.services.company_service import CompanyService
 
 router = APIRouter(prefix="/admin", tags=["Admin Management"])
 admin_service = AdminService()
+company_service = CompanyService()
+
 
 
 @router.get(
@@ -170,3 +178,54 @@ def get_audit_logs(
         message="Audit logs retrieved successfully",
         data=logs
     )
+
+
+@router.get(
+    "/companies/pending-verifications",
+    response_model=ApiResponse[List[PendingCompanyVerificationItem]],
+    status_code=status.HTTP_200_OK,
+    summary="Get all pending company verification requests (SKL-2)"
+)
+def get_pending_company_verifications(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[List[PendingCompanyVerificationItem]]:
+    """Retrieve all employer organizations currently awaiting verification review."""
+    items = company_service.get_pending_verifications(db=db)
+    return ApiResponse[List[PendingCompanyVerificationItem]](
+        success=True,
+        message="Pending company verifications retrieved successfully",
+        data=items
+    )
+
+
+@router.post(
+    "/companies/{company_id}/verify",
+    response_model=ApiResponse[CompanyVerificationStatusResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Approve or reject company verification dossier (SKL-2)"
+)
+def verify_company(
+    company_id: int,
+    payload: AdminCompanyVerificationAction,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[CompanyVerificationStatusResponse]:
+    """Admin decision point: Approve or reject verification dossier with optional feedback notes."""
+    client_ip = request.client.host if request.client else "unknown"
+    result = company_service.process_verification(
+        db=db,
+        admin_user=admin_user,
+        company_id=company_id,
+        action=payload.action,
+        notes=payload.notes,
+        ip_address=client_ip
+    )
+    decision = "approved" if payload.action.upper() == "APPROVE" else "rejected"
+    return ApiResponse[CompanyVerificationStatusResponse](
+        success=True,
+        message=f"Company verification dossier successfully {decision}",
+        data=result
+    )
+

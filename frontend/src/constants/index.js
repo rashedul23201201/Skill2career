@@ -31,5 +31,7 @@ export const ROUTES = {
   FORUM: "/forum",
   MOCK_TESTS: "/mock-tests",
   LEARNER_PROFILE: "/learner/profile",
+  COMPANY_VERIFICATION: "/company/verification",
+  ADMIN_VERIFICATIONS: "/admin/verifications",
   PROFILE: "/profile",
 };
