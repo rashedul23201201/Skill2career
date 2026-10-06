@@ -37,18 +37,24 @@ env/
 
 # Pytest / Testing
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
 coverage.xml
 coverage/
 *.cover
 nosetests.xml
-coverage.xml
 *.mo
 *.pot
 
+# Logs
+*.log
+logs/
+
 # Node / Frontend
 node_modules/
+.eslintcache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -69,6 +75,8 @@ dist-ssr/
 *~
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Database / SQLite test artifacts
 *.sqlite3
@@ -80,4 +88,5 @@ docs/
 # Uploads
 uploads/
 **/uploads/
+
 
