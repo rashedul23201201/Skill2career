@@ -1,10 +1,16 @@
-# Environment Variables
-.env
-.env.local
-.env.*.local
-*.env
+# ==============================================================================
+# SKILL2CAREER - Master .gitignore
+# Prevents accidental commits of credentials, caches, environments, and local build artifacts.
+# ==============================================================================
 
-# Python
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+
+# Python & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
@@ -27,6 +33,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Virtual Environments
 .venv/
@@ -34,21 +42,24 @@ venv/
 ENV/
 env/
 .env/
+env.bak/
+venv.bak/
 
-# Pytest / Testing
+# Testing & Code Coverage
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 coverage.xml
 coverage/
 *.cover
 nosetests.xml
-coverage.xml
 *.mo
 *.pot
 
-# Node / Frontend
+# Node & Frontend Dependencies
 node_modules/
+frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -56,24 +67,55 @@ pnpm-debug.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Vite / Build outputs
+# Frontend Build & Production Outputs
 dist/
+frontend/dist/
 dist-ssr/
+frontend/dist-ssr/
+.vite/
+frontend/.vite/
 *.local
 
-# IDEs and Editors
+# IDEs, Code Editors & OS Files
 .idea/
 .vscode/
 *.swp
 *.swo
+*.sw?
 *~
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
+desktop.ini
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Database / SQLite test artifacts
+# Database & SQLite Artifacts
 *.sqlite3
+*.sqlite
 *.db
+*.sql.bak
+*.sql.dump
 
-# Documentation / UI Mockups
+# Logs & Temporary Files
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+
+# Documentation Assets, UI Design Mockups & Archives
 docs/
+*.zip
+*.tar.gz
+*.rar
 
+# AI Agent & Local IDE Metadata
+.gemini/
+.agents/
+.system_generated/
+scratch/

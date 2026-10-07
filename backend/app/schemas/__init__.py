@@ -20,6 +20,20 @@ from app.schemas.admin import (
     AuditLogResponse,
 )
 
+from app.schemas.course import (
+    CourseLevel,
+    CourseStatus,
+    CourseCreateRequest,
+    CourseUpdateRequest,
+    CourseStatusUpdateRequest,
+    CourseResponse,
+    CourseDetailResponse,
+    CourseModuleSchema,
+    LessonSchema,
+    CurriculumSyncRequest,
+    PaginatedCourseResponse,
+)
+
 __all__ = [
     "UserRegisterRequest",
     "UserLoginRequest",
@@ -36,4 +50,16 @@ __all__ = [
     "UserRoleUpdateRequest",
     "PaginatedUserResponse",
     "AuditLogResponse",
+    "CourseLevel",
+    "CourseStatus",
+    "CourseCreateRequest",
+    "CourseUpdateRequest",
+    "CourseStatusUpdateRequest",
+    "CourseResponse",
+    "CourseDetailResponse",
+    "CourseModuleSchema",
+    "LessonSchema",
+    "CurriculumSyncRequest",
+    "PaginatedCourseResponse",
 ]
+

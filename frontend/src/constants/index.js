@@ -27,7 +27,12 @@ export const ROUTES = {
   ADMIN_DASHBOARD: "/admin",
   ADMIN_USERS: "/admin/users",
   COURSES: "/courses",
+  COURSE_NEW: "/courses/new",
+  COURSE_DETAILS: "/courses/:id",
+  COURSE_MANAGE: "/courses/:id/manage",
+  INSTRUCTOR_COURSES: "/instructor/courses",
   JOBS: "/jobs",
   FORUM: "/forum",
   MOCK_TESTS: "/mock-tests",
 };
+

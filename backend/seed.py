@@ -6,7 +6,7 @@ Usage:
 """
 import sys
 import logging
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.database.session import SessionLocal
 from app.models.user import User, UserRole
 from app.models.profile import LearnerProfile, InstructorProfile, CompanyProfile
@@ -142,12 +142,178 @@ def seed_database():
 
         logger.info("Database seeding complete. %d user(s) created.", created_count)
 
+        # LMS Course Seeding (SKL-53)
+        from app.models.course import Course, CourseModule, Lesson, CourseStatus, CourseLevel
+        instructor_user = db.execute(select(User).where(User.email == "instructor@skill2career.com")).scalar_one_or_none()
+        if instructor_user:
+            courses_count = db.execute(select(func.count(Course.id))).scalar() or 0
+            if courses_count == 0:
+                logger.info("Seeding initial courses and curriculum...")
+                sample_courses = [
+                    {
+                        "title": "Software Engineering",
+                        "description": "Learn software development principles, requirements, design, testing, and project practices.",
+                        "category": "Software Engineering",
+                        "level": CourseLevel.BEGINNER.value,
+                        "duration_weeks": 8,
+                        "status": CourseStatus.PUBLISHED.value,
+                        "modules": [
+                            {
+                                "title": "Module 1: SDLC & Agile Methodologies",
+                                "lessons": [
+                                    {"title": "Software Development Life Cycles", "duration": 30, "type": "video", "video_url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+                                    {"title": "Scrum Ceremonies & Jira Tracking", "duration": 45, "type": "video", "video_url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+                                ]
+                            },
+                            {
+                                "title": "Module 2: Clean Architecture & Design Patterns",
+                                "lessons": [
+                                    {"title": "SOLID Principles in Practice", "duration": 50, "type": "video"},
+                                    {"title": "Design Patterns: Factory & Observer", "duration": 40, "type": "reading"},
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Data Structures & Algorithms",
+                        "description": "Learn fundamental data structures and algorithms for technical interviews.",
+                        "category": "Programming",
+                        "level": CourseLevel.INTERMEDIATE.value,
+                        "duration_weeks": 10,
+                        "status": CourseStatus.PUBLISHED.value,
+                        "modules": [
+                            {
+                                "title": "Module 1: Foundations of Algorithms",
+                                "lessons": [
+                                    {"title": "Asymptotic Analysis & Big O", "duration": 35, "type": "video"},
+                                    {"title": "Recursion & Divide and Conquer", "duration": 40, "type": "video"},
+                                ]
+                            },
+                            {
+                                "title": "Module 2: Linear Data Structures",
+                                "lessons": [
+                                    {"title": "Lesson: Linked Lists", "duration": 30, "type": "video"},
+                                    {"title": "Lesson: Theory Trees", "duration": 40, "type": "video"},
+                                    {"title": "Binary Trees and Traversal Strategies", "duration": 45, "type": "video", "video_url": "https://www.youtube.com/embed/dQw4w9WgXcQ", "attachments": [{"name": "Lecture_Notes_Trees.pdf", "size": "2.4 MB"}]},
+                                    {"title": "Lesson: Retrenchobe Lists", "duration": 25, "type": "reading"},
+                                ]
+                            },
+                            {
+                                "title": "Module 3: Solved Strategies",
+                                "lessons": [
+                                    {"title": "Dynamic Programming Fundamentals", "duration": 60, "type": "video"},
+                                    {"title": "Graph Traversal: BFS & DFS", "duration": 55, "type": "video"},
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Web Development",
+                        "description": "Learn the fundamentals of modern web development.",
+                        "category": "Web Development",
+                        "level": CourseLevel.BEGINNER.value,
+                        "duration_weeks": 8,
+                        "status": CourseStatus.PUBLISHED.value,
+                        "modules": [
+                            {
+                                "title": "Module 1: Modern JavaScript & React",
+                                "lessons": [
+                                    {"title": "ES6+ Modern JavaScript", "duration": 40, "type": "video"},
+                                    {"title": "React Hooks & State Management", "duration": 50, "type": "video"},
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Database Management",
+                        "description": "Learn SQL, database design, and database management concepts.",
+                        "category": "Database",
+                        "level": CourseLevel.INTERMEDIATE.value,
+                        "duration_weeks": 6,
+                        "status": CourseStatus.PUBLISHED.value,
+                        "modules": [
+                            {
+                                "title": "Module 1: Relational Modeling & SQL",
+                                "lessons": [
+                                    {"title": "Relational Modeling & 3NF", "duration": 45, "type": "video"},
+                                    {"title": "Indexing, Query Plans & Optimization", "duration": 50, "type": "video"},
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Data Structures & Algorithms in Python",
+                        "description": "Complete Python-focused DSA masterclass tailored for technical screening assessments.",
+                        "category": "Programming",
+                        "level": CourseLevel.INTERMEDIATE.value,
+                        "duration_weeks": 10,
+                        "status": CourseStatus.DRAFT.value,
+                        "modules": [
+                            {
+                                "title": "Module 1: Foundations of Algorithms",
+                                "lessons": [
+                                    {"title": "Algorithm Analysis in Python", "duration": 30, "type": "video"},
+                                ]
+                            },
+                            {
+                                "title": "Module 2: Linear Data Structures",
+                                "lessons": [
+                                    {"title": "Lesson: Linked Lists", "duration": 35, "type": "video"},
+                                    {"title": "Lesson: Theory Trees", "duration": 40, "type": "video"},
+                                    {"title": "Binary Trees and Traversal Strategies", "duration": 45, "type": "video", "attachments": [{"name": "Lecture_Notes_Trees.pdf", "size": "2.4 MB"}]},
+                                ]
+                            }
+                        ]
+                    }
+                ]
+
+                for c_data in sample_courses:
+                    course = Course(
+                        instructor_id=instructor_user.id,
+                        title=c_data["title"],
+                        description=c_data["description"],
+                        category=c_data["category"],
+                        level=c_data["level"],
+                        price=0.0,
+                        is_free=True,
+                        duration_weeks=c_data["duration_weeks"],
+                        status=c_data["status"],
+                    )
+                    db.add(course)
+                    db.flush()
+
+                    for m_idx, m_data in enumerate(c_data["modules"]):
+                        module = CourseModule(
+                            course_id=course.id,
+                            title=m_data["title"],
+                            order_index=m_idx,
+                        )
+                        db.add(module)
+                        db.flush()
+
+                        for l_idx, l_data in enumerate(m_data["lessons"]):
+                            lesson = Lesson(
+                                course_id=course.id,
+                                module_id=module.id,
+                                title=l_data["title"],
+                                content_type=l_data.get("type", "video"),
+                                video_url=l_data.get("video_url"),
+                                attachments=l_data.get("attachments", []),
+                                duration_minutes=l_data.get("duration", 30),
+                                order_index=l_idx,
+                            )
+                            db.add(lesson)
+
+                db.commit()
+                logger.info("Successfully seeded %d sample courses with curriculum.", len(sample_courses))
+
     except Exception as e:
         db.rollback()
         logger.error("Seeding failed: %s", str(e))
         sys.exit(1)
     finally:
         db.close()
+
 
 
 if __name__ == "__main__":

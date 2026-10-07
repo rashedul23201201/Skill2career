@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings, setup_logging
 from app.core.exceptions import register_exception_handlers
-from app.routers import health_router, auth_router, admin_router
+from app.routers.api_router import api_router
 
 # Setup application logging
 setup_logging()
@@ -31,10 +31,9 @@ app.add_middleware(
 # Register centralized exception handlers
 register_exception_handlers(app)
 
-# Register modular routers with API v1 versioning
-app.include_router(health_router, prefix=settings.API_V1_STR)
-app.include_router(auth_router, prefix=settings.API_V1_STR)
-app.include_router(admin_router, prefix=settings.API_V1_STR)
+# Register modular routers with API v1 versioning via master api_router
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
 
 
 @app.get("/", tags=["Root"])
