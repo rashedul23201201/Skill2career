@@ -118,9 +118,17 @@ class UserRepository:
             pending_instructors = 0
 
         pending_approvals = pending_companies + pending_instructors
-        active_courses = 0
+        
+        try:
+            from app.models.course import Course, CourseStatus
+            active_courses = db.execute(
+                select(func.count(Course.id)).where(Course.status == CourseStatus.PUBLISHED.value)
+            ).scalar() or 0
+        except Exception:
+            active_courses = 0
 
         active_users = db.execute(select(func.count(User.id)).where(User.is_active == True)).scalar() or 0
+
         inactive_users = total_users - active_users
 
         learners = db.execute(select(func.count(User.id)).where(User.role == UserRole.LEARNER)).scalar() or 0

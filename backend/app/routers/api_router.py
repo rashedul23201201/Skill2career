@@ -8,6 +8,7 @@ from app.routers.admin import router as admin_router
 from app.routers.learner import router as learner_router
 from app.routers.company import router as company_router
 from app.routers.instructor import router as instructor_router
+from app.routers.course import router as course_router
 
 api_router = APIRouter()
 
@@ -18,6 +19,7 @@ api_router.include_router(admin_router)
 api_router.include_router(learner_router)
 api_router.include_router(company_router)
 api_router.include_router(instructor_router)
+api_router.include_router(course_router)
 
 router = api_router
 

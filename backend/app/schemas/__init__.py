@@ -19,7 +19,6 @@ from app.schemas.admin import (
     PaginatedUserResponse,
     AuditLogResponse,
 )
-
 from app.schemas.learner import (
     LearnerProfileUpdateRequest,
     LearnerProfileResponse,
@@ -27,6 +26,11 @@ from app.schemas.learner import (
     ProfileCompletionBreakdown,
 )
 from app.schemas.company import (
+    CompanyProfileUpdateRequest,
+    CompanyProfileResponse,
+    PublicCompanyProfileResponse,
+    AssetUploadResponse,
+    CompanyModerationRequest,
     CompanyVerificationRequest,
     CompanyVerificationStatusResponse,
     AdminCompanyVerificationAction,
@@ -40,13 +44,18 @@ from app.schemas.instructor import (
     InstructorStatusUpdateRequest,
     InstructorDashboardStats,
 )
-
-from app.schemas.company import (
-    CompanyProfileUpdateRequest,
-    CompanyProfileResponse,
-    PublicCompanyProfileResponse,
-    AssetUploadResponse,
-    CompanyModerationRequest,
+from app.schemas.course import (
+    CourseLevel,
+    CourseStatus,
+    CourseCreateRequest,
+    CourseUpdateRequest,
+    CourseStatusUpdateRequest,
+    CourseResponse,
+    CourseDetailResponse,
+    CourseModuleSchema,
+    LessonSchema,
+    CurriculumSyncRequest,
+    PaginatedCourseResponse,
 )
 
 __all__ = [
@@ -84,5 +93,15 @@ __all__ = [
     "InstructorProfileResponse",
     "InstructorStatusUpdateRequest",
     "InstructorDashboardStats",
+    "CourseLevel",
+    "CourseStatus",
+    "CourseCreateRequest",
+    "CourseUpdateRequest",
+    "CourseStatusUpdateRequest",
+    "CourseResponse",
+    "CourseDetailResponse",
+    "CourseModuleSchema",
+    "LessonSchema",
+    "CurriculumSyncRequest",
+    "PaginatedCourseResponse",
 ]
-

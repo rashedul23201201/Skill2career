@@ -9,6 +9,9 @@ import VerifyEmail from "../pages/VerifyEmail";
 import Dashboard from "../pages/Dashboard";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import UserManagement from "../pages/admin/UserManagement";
+import Courses from "../pages/Courses";
+import CourseDetails from "../pages/CourseDetails";
+import CourseManagement from "../pages/CourseManagement";
 import CompanyVerifications from "../pages/admin/CompanyVerifications";
 import LearnerProfile from "../pages/learner/LearnerProfile";
 import { CompanyDashboard, CompanyPublicProfile } from "../pages/company";
@@ -41,17 +44,34 @@ export const AppRoutes = () => {
         <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
         <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmail />} />
 
-        {/* Future Sprint Navigation Links */}
+        {/* Sprint 2 LMS Course Routes (SKL-53) */}
+        <Route path={ROUTES.COURSES} element={<Courses />} />
+        <Route path={ROUTES.COURSE_DETAILS} element={<CourseDetails />} />
         <Route
-          path={ROUTES.COURSES}
+          path={ROUTES.COURSE_NEW}
           element={
-            <FeaturePlaceholder
-              title="Courses & Learning Curriculum"
-              sprint="Sprint 2"
-              description="Explore industry-tailored courses published by leading educators and domain mentors across Bangladesh."
-            />
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <CourseManagement />
+            </ProtectedRoute>
           }
         />
+        <Route
+          path={ROUTES.COURSE_MANAGE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <CourseManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.INSTRUCTOR_COURSES}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <Courses />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path={ROUTES.JOBS}
           element={

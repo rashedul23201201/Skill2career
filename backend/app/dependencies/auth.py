@@ -88,6 +88,28 @@ def get_current_user(
     return user
 
 
+def get_optional_current_user(
+    request: Request,
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Dependency that returns current user if authenticated, or None if anonymous."""
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            return None
+        user = UserRepository.get_by_id(db, int(user_id_str))
+        if not user or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
+
+
+
 def require_role(*allowed_roles: UserRole) -> Callable[..., User]:
     """Dependency factory enforcing that the authenticated user possesses at least one of the allowed roles.
     Includes custom security audit logging when HTTP 403 Forbidden is raised (SKL-50)."""
