@@ -12,6 +12,12 @@ import UserManagement from "../pages/admin/UserManagement";
 import Courses from "../pages/Courses";
 import CourseDetails from "../pages/CourseDetails";
 import CourseManagement from "../pages/CourseManagement";
+import CompanyVerifications from "../pages/admin/CompanyVerifications";
+import LearnerProfile from "../pages/learner/LearnerProfile";
+import { CompanyDashboard, CompanyPublicProfile } from "../pages/company";
+import CompanyVerification from "../pages/company/CompanyVerification";
+import InstructorDashboard from "../pages/instructor/InstructorDashboard";
+import InstructorApply from "../pages/instructor/InstructorApply";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -107,7 +113,56 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Protected Admin Routes (SKL-50 / SKL-24) */}
+        {/* Protected Learner Profile Routes (SKL-51) */}
+        <Route
+          path={ROUTES.LEARNER_PROFILE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.PROFILE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Company Verification Routes (SKL-2) */}
+        <Route
+          path={ROUTES.COMPANY_VERIFICATION}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CompanyVerification />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Instructor Application Route (SKL-52) */}
+        <Route path={ROUTES.INSTRUCTOR_APPLY} element={<InstructorApply />} />
+
+        {/* Protected Instructor Routes (SKL-52) */}
+        <Route
+          path={ROUTES.INSTRUCTOR_DASHBOARD}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <InstructorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.INSTRUCTOR_PROFILE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <InstructorDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Admin Routes (SKL-50 / SKL-24 / SKL-2 / SKL-52) */}
         <Route
           path={ROUTES.ADMIN_DASHBOARD}
           element={
@@ -124,6 +179,36 @@ export const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path={ROUTES.ADMIN_VERIFICATIONS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+              <CompanyVerifications />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Company Dashboard Route (SKL-3) */}
+        <Route
+          path={ROUTES.COMPANY_DASHBOARD}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CompanyDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/company/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CompanyDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Public Company Profile Route (SKL-3) */}
+        <Route path="/companies/:id" element={<CompanyPublicProfile />} />
+        <Route path="/company/:id" element={<CompanyPublicProfile />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />

@@ -73,11 +73,44 @@ def seed_database():
                 "profile": {
                     "type": "company",
                     "company_name": "Brain Station 23 Ltd.",
+                    "tagline": "Global Digital Solutions & Enterprise Engineering Partner",
+                    "description": "Leading custom software development and IT solutions provider in Bangladesh, serving global Fortune 500 and enterprise clients with 700+ engineers.",
                     "industry": "Enterprise Software & Cloud",
+                    "company_size": "500+",
                     "contact_phone": "+8801700000000",
                     "website_url": "https://brainstation-23.com",
                     "office_address": "8th Floor, Plot 2, Block A, Dhaka 1206",
+                    "social_links": {
+                        "linkedin": "https://linkedin.com/company/brainstation23",
+                        "github": "https://github.com/brainstation-23",
+                        "facebook": "https://facebook.com/brainstation23",
+                    },
+                    "trade_license_url": "https://storage.skill2career.com/licenses/bs23_license.pdf",
+                    "registration_number": "TRAD/DNCC/001122/2024",
                     "verification_status": "APPROVED",
+                }
+            },
+            {
+                "email": "pending.company@skill2career.com",
+                "password": "Company12345!",
+                "first_name": "Sabbir",
+                "last_name": "Hossain",
+                "role": UserRole.COMPANY,
+                "is_verified": False,
+                "is_active": True,
+                "profile": {
+                    "type": "company",
+                    "company_name": "Chaldal Technologies Ltd.",
+                    "industry": "E-Commerce & Logistics",
+                    "contact_person": "Sabbir Hossain, Head of Talent",
+                    "contact_phone": "+8801711223344",
+                    "website_url": "https://chaldal.tech",
+                    "office_address": "House 12, Road 5, Dhanmondi, Dhaka",
+                    "location": "Dhaka, Bangladesh",
+                    "company_size": "51-200",
+                    "trade_license_url": "https://storage.skill2career.com/licenses/chaldal_trade_lic_2026.pdf",
+                    "registration_number": "TRAD/DSCC/098765/2026",
+                    "verification_status": "PENDING",
                 }
             }
         ]
@@ -128,10 +161,18 @@ def seed_database():
                     profile = CompanyProfile(
                         user_id=user.id,
                         company_name=profile_data["company_name"],
-                        industry=profile_data["industry"],
-                        contact_phone=profile_data["contact_phone"],
-                        website_url=profile_data["website_url"],
-                        office_address=profile_data["office_address"],
+                        tagline=profile_data.get("tagline"),
+                        description=profile_data.get("description"),
+                        industry=profile_data.get("industry"),
+                        contact_person=profile_data.get("contact_person"),
+                        contact_phone=profile_data.get("contact_phone"),
+                        website_url=profile_data.get("website_url"),
+                        office_address=profile_data.get("office_address"),
+                        location=profile_data.get("location"),
+                        company_size=profile_data.get("company_size"),
+                        social_links=profile_data.get("social_links", {}),
+                        trade_license_url=profile_data.get("trade_license_url"),
+                        registration_number=profile_data.get("registration_number"),
                         verification_status=profile_data["verification_status"],
                     )
                     db.add(profile)

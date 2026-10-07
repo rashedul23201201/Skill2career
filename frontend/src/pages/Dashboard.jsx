@@ -21,6 +21,8 @@ import {
   TrendingUp,
   Clock,
   Sparkles,
+  Building2,
+  GraduationCap,
 } from "lucide-react";
 
 export const Dashboard = () => {
@@ -69,7 +71,7 @@ export const Dashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Welcome Banner matching Instructors dashboard.png */}
+      {/* Welcome Banner */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center space-x-3">
@@ -113,6 +115,74 @@ export const Dashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Learner Profile Quick Action Banner (SKL-51) */}
+      {user?.role === "LEARNER" && (
+        <div className="bg-gradient-to-r from-navy-950 via-blue-950 to-navy-900 rounded-2xl p-6 sm:p-7 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 z-10">
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                SKL-51 Module Active
+              </span>
+              <span className="text-xs text-blue-200">Personal & Career Management</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold font-heading">
+              Your Learner Profile & Verified CV
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              Track your dynamic 4-tier profile completion (Basic Info, Education, Skills, and Resume upload) to get noticed by verified hiring partners.
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 z-10 flex-shrink-0">
+            <Link
+              to={ROUTES.LEARNER_PROFILE || "/learners/profile"}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow transition-all hover:shadow-lg"
+            >
+              <User className="w-4 h-4" />
+              <span>Open Learner Profile</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Company Profile Quick Action Banner (SKL-2 & SKL-3) */}
+      {user?.role === "COMPANY" && (
+        <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-blue-950 rounded-2xl p-6 sm:p-7 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-1.5 z-10">
+            <div className="flex items-center space-x-2">
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
+                user?.is_verified
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+              }`}>
+                {user?.is_verified ? "Verified Company" : "Verification Required"}
+              </span>
+              <span className="text-xs text-blue-200">Company Profile & Branding Console</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold font-heading">
+              Company Dashboard & Recruitment Hub
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              Manage your company branding assets (logo & cover banner), verified badges, candidate pipeline, and public profile view for job seekers.
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 z-10 flex-shrink-0">
+            <Link
+              to={ROUTES.COMPANY_VERIFICATION || "/company/verification"}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow transition-all"
+            >
+              <span>Verification</span>
+            </Link>
+            <Link
+              to={ROUTES.COMPANY_DASHBOARD || "/company/dashboard"}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow transition-all hover:shadow-lg"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Open Dashboard</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Instructor Dashboard Metrics (matching Instructors dashboard.png) */}
       {isInstructor ? (
@@ -199,7 +269,7 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          {/* 2-Column: My Courses & Learner Performance (Instructors dashboard.png) */}
+          {/* 2-Column: My Courses & Learner Performance */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Card: My Courses */}
             <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
@@ -305,7 +375,7 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick Actions matching Instructors dashboard.png */}
+          {/* Quick Actions */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-2 text-sm font-bold text-navy-950">
               <Sparkles className="w-4 h-4 text-emerald-500" />
@@ -331,7 +401,7 @@ export const Dashboard = () => {
           </div>
         </>
       ) : (
-        /* Learner / Admin General Dashboard Grid */
+        /* Learner / Admin / Company General Dashboard Grid */
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* User Identity Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">

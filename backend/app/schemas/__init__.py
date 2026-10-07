@@ -19,7 +19,31 @@ from app.schemas.admin import (
     PaginatedUserResponse,
     AuditLogResponse,
 )
-
+from app.schemas.learner import (
+    LearnerProfileUpdateRequest,
+    LearnerProfileResponse,
+    ResumeUploadResponse,
+    ProfileCompletionBreakdown,
+)
+from app.schemas.company import (
+    CompanyProfileUpdateRequest,
+    CompanyProfileResponse,
+    PublicCompanyProfileResponse,
+    AssetUploadResponse,
+    CompanyModerationRequest,
+    CompanyVerificationRequest,
+    CompanyVerificationStatusResponse,
+    AdminCompanyVerificationAction,
+    PendingCompanyVerificationItem,
+    JobCreateRequest,
+)
+from app.schemas.instructor import (
+    InstructorApplicationRequest,
+    InstructorProfileUpdateRequest,
+    InstructorProfileResponse,
+    InstructorStatusUpdateRequest,
+    InstructorDashboardStats,
+)
 from app.schemas.course import (
     CourseLevel,
     CourseStatus,
@@ -50,6 +74,25 @@ __all__ = [
     "UserRoleUpdateRequest",
     "PaginatedUserResponse",
     "AuditLogResponse",
+    "LearnerProfileUpdateRequest",
+    "LearnerProfileResponse",
+    "ResumeUploadResponse",
+    "ProfileCompletionBreakdown",
+    "CompanyProfileUpdateRequest",
+    "CompanyProfileResponse",
+    "PublicCompanyProfileResponse",
+    "AssetUploadResponse",
+    "CompanyModerationRequest",
+    "CompanyVerificationRequest",
+    "CompanyVerificationStatusResponse",
+    "AdminCompanyVerificationAction",
+    "PendingCompanyVerificationItem",
+    "JobCreateRequest",
+    "InstructorApplicationRequest",
+    "InstructorProfileUpdateRequest",
+    "InstructorProfileResponse",
+    "InstructorStatusUpdateRequest",
+    "InstructorDashboardStats",
     "CourseLevel",
     "CourseStatus",
     "CourseCreateRequest",
@@ -62,4 +105,3 @@ __all__ = [
     "CurriculumSyncRequest",
     "PaginatedCourseResponse",
 ]
-

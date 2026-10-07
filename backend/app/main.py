@@ -31,9 +31,8 @@ app.add_middleware(
 # Register centralized exception handlers
 register_exception_handlers(app)
 
-# Register modular routers with API v1 versioning via master api_router
+# Register centralized API router with API v1 versioning
 app.include_router(api_router, prefix=settings.API_V1_STR)
-
 
 
 @app.get("/", tags=["Root"])

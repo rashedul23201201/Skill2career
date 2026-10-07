@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES, USER_ROLES } from "../../constants";
-import { LogOut, LayoutDashboard, User as UserIcon, Shield } from "lucide-react";
+import { LogOut, LayoutDashboard, User as UserIcon, Shield, Building2, GraduationCap } from "lucide-react";
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -30,6 +30,7 @@ export const Navbar = () => {
       case USER_ROLES.ADMIN:
         return [
           { name: "Admin Dashboard", path: ROUTES.ADMIN_DASHBOARD },
+          { name: "Verifications", path: ROUTES.ADMIN_VERIFICATIONS },
           { name: "User Management", path: ROUTES.ADMIN_USERS },
           { name: "Courses", path: ROUTES.COURSES },
           { name: "Jobs", path: ROUTES.JOBS },
@@ -38,6 +39,7 @@ export const Navbar = () => {
       case USER_ROLES.INSTRUCTOR:
         return [
           { name: "Home", path: ROUTES.HOME },
+          { name: "Instructor Dashboard", path: ROUTES.INSTRUCTOR_DASHBOARD },
           { name: "Courses", path: ROUTES.COURSES },
           { name: "Assessments", path: ROUTES.MOCK_TESTS },
           { name: "Forum", path: ROUTES.FORUM },
@@ -45,6 +47,8 @@ export const Navbar = () => {
       case USER_ROLES.COMPANY:
         return [
           { name: "Home", path: ROUTES.HOME },
+          { name: "Company Dashboard", path: ROUTES.COMPANY_DASHBOARD },
+          { name: "Verification", path: ROUTES.COMPANY_VERIFICATION },
           { name: "Jobs & Internships", path: ROUTES.JOBS },
           { name: "Forum", path: ROUTES.FORUM },
         ];
@@ -52,9 +56,11 @@ export const Navbar = () => {
       default:
         return [
           { name: "Home", path: ROUTES.HOME },
+          { name: "My Profile", path: ROUTES.LEARNER_PROFILE },
           { name: "Courses", path: ROUTES.COURSES },
           { name: "Mock Tests", path: ROUTES.MOCK_TESTS },
           { name: "Jobs & Internships", path: ROUTES.JOBS },
+          { name: "Teach", path: ROUTES.INSTRUCTOR_APPLY },
           { name: "Forum", path: ROUTES.FORUM },
         ];
     }
@@ -110,13 +116,42 @@ export const Navbar = () => {
                     <span>Admin Console</span>
                   </Link>
                 ) : (
-                  <Link
-                    to={ROUTES.DASHBOARD}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    <span>Dashboard</span>
-                  </Link>
+                  <div className="flex items-center space-x-2">
+                    <Link
+                      to={ROUTES.DASHBOARD}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                    >
+                      <LayoutDashboard className="w-3.5 h-3.5" />
+                      <span>Dashboard</span>
+                    </Link>
+                    {user?.role === USER_ROLES.LEARNER && (
+                      <Link
+                        to={ROUTES.LEARNER_PROFILE}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                      >
+                        <UserIcon className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Profile</span>
+                      </Link>
+                    )}
+                    {user?.role === USER_ROLES.COMPANY && (
+                      <Link
+                        to={ROUTES.COMPANY_DASHBOARD}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                      >
+                        <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Company Portal</span>
+                      </Link>
+                    )}
+                    {user?.role === USER_ROLES.INSTRUCTOR && (
+                      <Link
+                        to={ROUTES.INSTRUCTOR_DASHBOARD}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                      >
+                        <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Instructor Portal</span>
+                      </Link>
+                    )}
+                  </div>
                 )}
 
                 {/* User info & Role Badge */}
