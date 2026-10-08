@@ -42,6 +42,7 @@ export const ROUTES = {
   MOCK_TESTS: "/mock-tests",
   MOCK_TEST_NEW: "/mock-tests/new",
   MOCK_TEST_MANAGE: "/mock-tests/:id/manage",
+  MOCK_TEST_TAKE: "/mock-tests/:id/take",
   LEARNER_PROFILE: "/learner/profile",
   COMPANY_VERIFICATION: "/company/verification",
   ADMIN_VERIFICATIONS: "/admin/verifications",

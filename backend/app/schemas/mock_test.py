@@ -131,3 +131,66 @@ class PaginatedMockTestResponse(BaseModel):
     page: int
     size: int
     total_pages: int
+
+
+class TestAttemptStartResponse(BaseModel):
+    __test__ = False
+    id: int
+    test_id: int
+    learner_id: int
+    started_at: datetime
+    expires_at: datetime
+    duration_minutes: int
+    duration_seconds: int
+    remaining_seconds: int
+    status: str
+    answers: Optional[dict] = None
+    marked_for_review: Optional[List[int]] = []
+    test_title: str
+    category: str
+    total_questions: int
+    passing_score: int
+    questions: List[TestQuestionResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TestAttemptSaveAnswersRequest(BaseModel):
+    __test__ = False
+    answers: dict = Field(default_factory=dict, description="Dictionary mapping question_id str to selected option key")
+    marked_for_review: Optional[List[int]] = Field(default_factory=list, description="Question IDs marked for review")
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class TestAttemptSubmitRequest(BaseModel):
+    __test__ = False
+    answers: Optional[dict] = Field(default=None, description="Final submitted answers")
+    marked_for_review: Optional[List[int]] = Field(default=None, description="Question IDs marked for review")
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class TestAttemptResponse(BaseModel):
+    __test__ = False
+    id: int
+    test_id: int
+    learner_id: int
+    started_at: datetime
+    submitted_at: Optional[datetime] = None
+    status: str
+    score: float
+    total_marks: int
+    percentage: float
+    is_passed: bool
+    time_taken_seconds: int
+    answers: Optional[dict] = None
+    marked_for_review: Optional[List[int]] = None
+    test_title: Optional[str] = None
+    category: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    passing_score: Optional[int] = None
+    total_questions: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+

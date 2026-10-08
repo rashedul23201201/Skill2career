@@ -24,6 +24,7 @@ import JobDetails from "../pages/JobDetails";
 import JobManagement from "../pages/JobManagement";
 import MockTests from "../pages/MockTests";
 import MockTestManagement from "../pages/MockTestManagement";
+import MockTestAttempt from "../pages/MockTestAttempt";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -117,8 +118,24 @@ export const AppRoutes = () => {
             />
           }
         />
-        {/* Sprint 2 Assessment Mock Test Routes (SKL-56) */}
+        {/* Sprint 2 Assessment Mock Test Routes (SKL-56 / SKL-57) */}
         <Route path={ROUTES.MOCK_TESTS} element={<MockTests />} />
+        <Route
+          path={ROUTES.MOCK_TEST_TAKE}
+          element={
+            <ProtectedRoute>
+              <MockTestAttempt />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mock-tests/:id/attempt"
+          element={
+            <ProtectedRoute>
+              <MockTestAttempt />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path={ROUTES.MOCK_TEST_NEW}
           element={

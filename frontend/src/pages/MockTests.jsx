@@ -436,9 +436,7 @@ export const MockTests = () => {
               )}
               <button
                 onClick={() => {
-                  alert(
-                    "Test session timer & answering interface will launch in Phase 2 (SKL-57: Test Attempt & Timer)!"
-                  );
+                  navigate(`/mock-tests/${activeModalTest.id}/take`);
                   setActiveModalTest(null);
                 }}
                 className="px-5 py-2 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs font-semibold shadow-sm"

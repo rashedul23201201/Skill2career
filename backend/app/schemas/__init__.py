@@ -84,6 +84,10 @@ from app.schemas.mock_test import (
     MockTestDetailResponse,
     MockTestSyncQuestionsRequest,
     PaginatedMockTestResponse,
+    TestAttemptStartResponse,
+    TestAttemptSaveAnswersRequest,
+    TestAttemptSubmitRequest,
+    TestAttemptResponse,
 )
 
 __all__ = [
@@ -151,4 +155,8 @@ __all__ = [
     "MockTestDetailResponse",
     "MockTestSyncQuestionsRequest",
     "PaginatedMockTestResponse",
+    "TestAttemptStartResponse",
+    "TestAttemptSaveAnswersRequest",
+    "TestAttemptSubmitRequest",
+    "TestAttemptResponse",
 ]

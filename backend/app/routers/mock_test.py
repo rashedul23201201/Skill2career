@@ -17,6 +17,8 @@ from app.schemas.mock_test import (
     TestQuestionResponse,
     MockTestSyncQuestionsRequest,
     PaginatedMockTestResponse,
+    TestAttemptStartResponse,
+    TestAttemptResponse,
 )
 from app.services.mock_test_service import MockTestService
 
@@ -266,3 +268,42 @@ def sync_questions(
         message="Mock test questions synchronized successfully",
         data=questions,
     )
+
+
+@router.post(
+    "/{test_id}/start-attempt",
+    response_model=ApiResponse[TestAttemptStartResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Start or resume a mock test attempt with timer (SKL-57 AC-1)",
+)
+def start_attempt(
+    test_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[TestAttemptStartResponse]:
+    attempt = mock_test_service.start_attempt(db=db, test_id=test_id, current_user=current_user)
+    return ApiResponse[TestAttemptStartResponse](
+        success=True,
+        message="Test attempt session started successfully",
+        data=attempt,
+    )
+
+
+@router.get(
+    "/{test_id}/my-attempts",
+    response_model=ApiResponse[List[TestAttemptResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get user's attempts on this mock test (SKL-57)",
+)
+def get_my_attempts_for_test(
+    test_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[List[TestAttemptResponse]]:
+    attempts = mock_test_service.get_learner_attempts(db=db, current_user=current_user, test_id=test_id)
+    return ApiResponse[List[TestAttemptResponse]](
+        success=True,
+        message="Test attempts retrieved successfully",
+        data=attempts,
+    )
+
