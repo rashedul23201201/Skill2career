@@ -30,6 +30,8 @@ export const ROUTES = {
   COURSE_NEW: "/courses/new",
   COURSE_DETAILS: "/courses/:id",
   COURSE_MANAGE: "/courses/:id/manage",
+  COURSE_LEARN: "/courses/:id/learn",
+  COURSE_LEARN_LESSON: "/courses/:id/learn/:lessonId",
   INSTRUCTOR_COURSES: "/instructor/courses",
   JOBS: "/jobs",
   JOB_NEW: "/jobs/new",

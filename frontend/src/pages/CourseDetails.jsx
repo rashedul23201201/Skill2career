@@ -192,13 +192,12 @@ export const CourseDetails = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => alert("1-Click Enrollment is ready in Sprint 2 LMS Track (SKL-54)!")}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all text-center"
+          <Link
+            to={`/courses/${course.id}/learn`}
+            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-1.5"
           >
-            Enroll in Course
-          </button>
+            <span>Start Learning & Course Materials</span>
+          </Link>
         </div>
       </div>
 

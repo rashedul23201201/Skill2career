@@ -12,6 +12,7 @@ import UserManagement from "../pages/admin/UserManagement";
 import Courses from "../pages/Courses";
 import CourseDetails from "../pages/CourseDetails";
 import CourseManagement from "../pages/CourseManagement";
+import CourseLearning from "../pages/CourseLearning";
 import CompanyVerifications from "../pages/admin/CompanyVerifications";
 import LearnerProfile from "../pages/learner/LearnerProfile";
 import { CompanyDashboard, CompanyPublicProfile } from "../pages/company";
@@ -49,9 +50,11 @@ export const AppRoutes = () => {
         <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
         <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmail />} />
 
-        {/* Sprint 2 LMS Course Routes (SKL-53) */}
+        {/* Sprint 2 LMS Course & Lesson Learning Routes (SKL-53 / SKL-55) */}
         <Route path={ROUTES.COURSES} element={<Courses />} />
         <Route path={ROUTES.COURSE_DETAILS} element={<CourseDetails />} />
+        <Route path={ROUTES.COURSE_LEARN} element={<CourseLearning />} />
+        <Route path={ROUTES.COURSE_LEARN_LESSON} element={<CourseLearning />} />
         <Route
           path={ROUTES.COURSE_NEW}
           element={

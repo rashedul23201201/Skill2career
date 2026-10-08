@@ -139,3 +139,53 @@ class PaginatedCourseResponse(BaseModel):
     page: int
     size: int
     total_pages: int
+
+
+class LessonCreateRequest(BaseModel):
+    """Request payload to create a new lesson (SKL-55 AC-1)."""
+    title: str = Field(min_length=1, max_length=200, description="Title of the lesson")
+    module_id: Optional[int] = Field(default=None, description="Optional curriculum module ID")
+    content_type: str = Field(default="video", description="Type of lesson content")
+    video_url: Optional[str] = Field(default=None, max_length=500, description="Video embed or stream URL")
+    study_material_url: Optional[str] = Field(default=None, max_length=500, description="Study material URL")
+    attachments: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="List of study materials/attachments")
+    duration_minutes: int = Field(default=30, ge=1, le=600, description="Lesson duration in minutes")
+    order_index: int = Field(default=0, ge=0, description="Order index")
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class LessonUpdateRequest(BaseModel):
+    """Request payload to update an existing lesson (SKL-55)."""
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    module_id: Optional[int] = None
+    content_type: Optional[str] = None
+    video_url: Optional[str] = None
+    study_material_url: Optional[str] = None
+    attachments: Optional[List[Dict[str, Any]]] = None
+    duration_minutes: Optional[int] = Field(default=None, ge=1, le=600)
+    order_index: Optional[int] = Field(default=None, ge=0)
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class StudyMaterialUploadResponse(BaseModel):
+    """Response payload for uploaded lesson study material (SKL-55 AC-2)."""
+    filename: str
+    file_url: str
+    name: str
+    size: str
+    content_type: str
+    message: str = "Study material uploaded successfully"
+
+
+class CourseModuleCreateRequest(BaseModel):
+    """Request payload to create a new module."""
+    title: str = Field(min_length=1, max_length=200, description="Title of the module")
+    order_index: int = Field(default=0, ge=0)
+
+
+class CourseModuleUpdateRequest(BaseModel):
+    """Request payload to update an existing module."""
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    order_index: Optional[int] = Field(default=None, ge=0)
