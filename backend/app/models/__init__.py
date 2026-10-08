@@ -8,6 +8,7 @@ from app.models.course import Course, CourseModule, Lesson, CourseLevel, CourseS
 from app.models.job import JobPosting, JobPostingType, JobWorkMode, JobStatus, JobExperienceLevel
 from app.models.mock_test import MockTest, TestQuestion, MockTestStatus, TestAttempt, TestAttemptStatus
 from app.models.forum import ForumCategory, ForumPost, ForumComment, ForumLike, ForumReport
+from app.models.screening import ScreeningQuestion, CandidateEvaluation, QuestionType, DealBreakerRule, CandidateStatus
 
 __all__ = [
     "User",
@@ -39,6 +40,11 @@ __all__ = [
     "ForumComment",
     "ForumLike",
     "ForumReport",
+    "ScreeningQuestion",
+    "CandidateEvaluation",
+    "QuestionType",
+    "DealBreakerRule",
+    "CandidateStatus",
 ]
 
 

@@ -10,6 +10,14 @@ from sqlalchemy import select, func
 from app.database.session import SessionLocal
 from app.models.user import User, UserRole
 from app.models.profile import LearnerProfile, InstructorProfile, CompanyProfile
+from app.models.job import JobPosting, JobStatus
+from app.models.screening import (
+    ScreeningQuestion,
+    CandidateEvaluation,
+    QuestionType,
+    DealBreakerRule,
+    CandidateStatus,
+)
 from app.models.forum import ForumCategory, ForumPost, ForumComment
 from app.core.security import hash_password
 
@@ -628,6 +636,355 @@ def seed_database():
                 db.commit()
                 logger.info("Successfully seeded %d sample mock tests with questions.", len(sample_mock_tests))
 
+        job = db.execute(
+            select(JobPosting).where(JobPosting.title == "Junior Software Developer")
+        ).scalars().first()
+
+        if job:
+            existing_questions = db.execute(
+                select(ScreeningQuestion).where(ScreeningQuestion.job_id == job.id)
+            ).scalars().all()
+
+            if not existing_questions:
+                q1 = ScreeningQuestion(
+                    job_id=job.id,
+                    question_text="Years of hands-on React/Node experience?",
+                    question_type=QuestionType.NUMERIC.value,
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.GTE.value,
+                    deal_breaker_value="2",
+                    deal_breaker_label="Deal-Breaker: Auto-Disqualify if < 2 Years",
+                    weight=40,
+                    order_index=1,
+                )
+                q2 = ScreeningQuestion(
+                    job_id=job.id,
+                    question_text="Are you comfortable working in hybrid mode in Dhaka?",
+                    question_type=QuestionType.YES_NO.value,
+                    options=["Yes", "No"],
+                    expected_answer="Yes",
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.MANDATORY.value,
+                    deal_breaker_value="Yes",
+                    deal_breaker_label="Deal-Breaker: Mandatory",
+                    weight=40,
+                    order_index=2,
+                )
+                q3 = ScreeningQuestion(
+                    job_id=job.id,
+                    question_text="Link to your most complex GitHub repository",
+                    question_type=QuestionType.TEXT.value,
+                    is_required=False,
+                    is_deal_breaker=False,
+                    weight=20,
+                    order_index=3,
+                )
+                db.add_all([q1, q2, q3])
+                db.flush()
+
+                sample_evaluations = [
+                    {
+                        "candidate_name": "Rashedul Islam",
+                        "candidate_email": "23201201@uap-bd.edu",
+                        "match_score": 94.0,
+                        "deal_breaker_passed": True,
+                        "deal_breaker_failed_reason": None,
+                        "status": CandidateStatus.SHORTLISTED.value,
+                        "key_answers_preview": "3 yrs React/Node • Hybrid Confirmed • github.com/rashedul/fullstack",
+                        "answers": {
+                            str(q1.id): "3 years",
+                            str(q2.id): "Yes",
+                            str(q3.id): "https://github.com/rashedul/fullstack-app",
+                        },
+                    },
+                    {
+                        "candidate_name": "Brain Station",
+                        "candidate_email": "candidate.bs@test.com",
+                        "match_score": 82.0,
+                        "deal_breaker_passed": True,
+                        "deal_breaker_failed_reason": None,
+                        "status": CandidateStatus.SHORTLISTED.value,
+                        "key_answers_preview": "2.5 yrs React/Node • Hybrid Confirmed • github.com/candidate/project",
+                        "answers": {
+                            str(q1.id): "2.5 years",
+                            str(q2.id): "Yes",
+                            str(q3.id): "https://github.com/candidate/project",
+                        },
+                    },
+                    {
+                        "candidate_name": "Rashedul Islam",
+                        "candidate_email": "applicant3@test.com",
+                        "match_score": 45.0,
+                        "deal_breaker_passed": False,
+                        "deal_breaker_failed_reason": "Failed deal-breaker: < 2 Years experience",
+                        "status": CandidateStatus.DISQUALIFIED.value,
+                        "key_answers_preview": "1 yr React/Node • Hybrid Confirmed • github.com/applicant/repo",
+                        "answers": {
+                            str(q1.id): "1 year",
+                            str(q2.id): "Yes",
+                            str(q3.id): "https://github.com/applicant/repo",
+                        },
+                    },
+                    {
+                        "candidate_name": "Brain Station",
+                        "candidate_email": "applicant4@test.com",
+                        "match_score": 45.0,
+                        "deal_breaker_passed": False,
+                        "deal_breaker_failed_reason": "Failed deal-breaker: Not comfortable with hybrid Dhaka",
+                        "status": CandidateStatus.DISQUALIFIED.value,
+                        "key_answers_preview": "2 yrs React/Node • Remote Only • github.com/applicant4/code",
+                        "answers": {
+                            str(q1.id): "2 years",
+                            str(q2.id): "No",
+                            str(q3.id): "https://github.com/applicant4/code",
+                        },
+                    },
+                    {
+                        "candidate_name": "Tanvir Hasan",
+                        "candidate_email": "learner@skill2career.com",
+                        "match_score": 90.0,
+                        "deal_breaker_passed": True,
+                        "deal_breaker_failed_reason": None,
+                        "status": CandidateStatus.UNDER_REVIEW.value,
+                        "key_answers_preview": "3 yrs React/Node • Hybrid Confirmed • github.com/tanvir/core",
+                        "answers": {
+                            str(q1.id): "3 years",
+                            str(q2.id): "Yes",
+                            str(q3.id): "https://github.com/tanvir/core",
+                        },
+                    },
+                    {
+                        "candidate_name": "Jubair Bin Hasan",
+                        "candidate_email": "23201065@uap-bd.edu",
+                        "match_score": 88.0,
+                        "deal_breaker_passed": True,
+                        "deal_breaker_failed_reason": None,
+                        "status": CandidateStatus.UNDER_REVIEW.value,
+                        "key_answers_preview": "2.5 yrs React/Node • Hybrid Confirmed • github.com/jubair/portfolio",
+                        "answers": {
+                            str(q1.id): "2.5 years",
+                            str(q2.id): "Yes",
+                            str(q3.id): "https://github.com/jubair/portfolio",
+                        },
+                    },
+                    {
+                        "candidate_name": "Kazi Sakib",
+                        "candidate_email": "sakib@test.com",
+                        "match_score": 38.0,
+                        "deal_breaker_passed": False,
+                        "deal_breaker_failed_reason": "Failed deal-breaker: < 2 Years experience",
+                        "status": CandidateStatus.DISQUALIFIED.value,
+                        "key_answers_preview": "0.5 yrs React/Node • Remote Only",
+                        "answers": {
+                            str(q1.id): "0.5 years",
+                            str(q2.id): "No",
+                            str(q3.id): "https://github.com/sakib/portfolio",
+                        },
+                    },
+                    {
+                        "candidate_name": "Sumaiya Akter",
+                        "candidate_email": "sumaiya@test.com",
+                        "match_score": 78.0,
+                        "deal_breaker_passed": True,
+                        "deal_breaker_failed_reason": None,
+                        "status": CandidateStatus.UNDER_REVIEW.value,
+                        "key_answers_preview": "2 yrs React/Node • Hybrid Confirmed • github.com/sumaiya/app",
+                        "answers": {
+                            str(q1.id): "2 years",
+                            str(q2.id): "Yes",
+                            str(q3.id): "https://github.com/sumaiya/app",
+                        },
+                    },
+                ]
+
+                for item in sample_evaluations:
+                    ev = CandidateEvaluation(
+                        job_id=job.id,
+                        candidate_name=item["candidate_name"],
+                        candidate_email=item["candidate_email"],
+                        match_score=item["match_score"],
+                        deal_breaker_passed=item["deal_breaker_passed"],
+                        deal_breaker_failed_reason=item["deal_breaker_failed_reason"],
+                        status=item["status"],
+                        key_answers_preview=item["key_answers_preview"],
+                        answers=item["answers"],
+                    )
+                    db.add(ev)
+
+                job.applications_count = len(sample_evaluations)
+                db.commit()
+                logger.info("Successfully seeded screening questions and %d candidate evaluations for %s.", len(sample_evaluations), job.title)
+
+        # 2. Frontend Developer
+        fe_job = db.execute(select(JobPosting).where(JobPosting.title == "Frontend Developer")).scalars().first()
+        if fe_job:
+            existing_fe_qs = db.execute(select(ScreeningQuestion).where(ScreeningQuestion.job_id == fe_job.id)).scalars().all()
+            if not existing_fe_qs:
+                fe_q1 = ScreeningQuestion(
+                    job_id=fe_job.id,
+                    question_text="Years of hands-on React & modern JavaScript experience?",
+                    question_type=QuestionType.NUMERIC.value,
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.GTE.value,
+                    deal_breaker_value="2",
+                    deal_breaker_label="Deal-Breaker: Auto-Disqualify if < 2 Years",
+                    weight=40,
+                    order_index=1,
+                )
+                fe_q2 = ScreeningQuestion(
+                    job_id=fe_job.id,
+                    question_text="Are you proficient with TailwindCSS and TypeScript?",
+                    question_type=QuestionType.YES_NO.value,
+                    options=["Yes", "No"],
+                    expected_answer="Yes",
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.MANDATORY.value,
+                    deal_breaker_value="Yes",
+                    deal_breaker_label="Deal-Breaker: Mandatory",
+                    weight=40,
+                    order_index=2,
+                )
+                fe_q3 = ScreeningQuestion(
+                    job_id=fe_job.id,
+                    question_text="Link to your deployed portfolio or best frontend project",
+                    question_type=QuestionType.TEXT.value,
+                    is_required=False,
+                    is_deal_breaker=False,
+                    weight=20,
+                    order_index=3,
+                )
+                db.add_all([fe_q1, fe_q2, fe_q3])
+                db.flush()
+
+                fe_candidates = [
+                    {"name": "Rashedul Islam", "email": "23201201@uap-bd.edu", "score": 95.0, "pass": True, "reason": None, "status": CandidateStatus.SHORTLISTED.value, "preview": "3 yrs React • Tailwind/TS Confirmed • github.com/rashedul/ui-kit", "answers": {str(fe_q1.id): "3 years", str(fe_q2.id): "Yes", str(fe_q3.id): "https://github.com/rashedul/ui-kit"}},
+                    {"name": "Lam-yea Chowdhury", "email": "candidate.lam@test.com", "score": 88.0, "pass": True, "reason": None, "status": CandidateStatus.SHORTLISTED.value, "preview": "2.5 yrs React • Tailwind/TS Confirmed • portfolio.lamyea.dev", "answers": {str(fe_q1.id): "2.5 years", str(fe_q2.id): "Yes", str(fe_q3.id): "https://portfolio.lamyea.dev"}},
+                    {"name": "Asif Mahmud", "email": "asif@test.com", "score": 80.0, "pass": True, "reason": None, "status": CandidateStatus.UNDER_REVIEW.value, "preview": "2 yrs React • Tailwind/TS Confirmed • asif-portfolio.vercel.app", "answers": {str(fe_q1.id): "2 years", str(fe_q2.id): "Yes", str(fe_q3.id): "https://asif-portfolio.vercel.app"}},
+                    {"name": "Candidate FrontEnd", "email": "frontend.junior@test.com", "score": 42.0, "pass": False, "reason": "Failed deal-breaker: < 2 Years experience", "status": CandidateStatus.DISQUALIFIED.value, "preview": "1 yr React • Tailwind/TS Confirmed • github.com/frontend/demo", "answers": {str(fe_q1.id): "1 year", str(fe_q2.id): "Yes", str(fe_q3.id): "https://github.com/frontend/demo"}},
+                    {"name": "Muktadir Rahman", "email": "muktadir@test.com", "score": 40.0, "pass": False, "reason": "Failed deal-breaker: Not proficient with TypeScript", "status": CandidateStatus.DISQUALIFIED.value, "preview": "2 yrs React • No TS • github.com/muktadir/app", "answers": {str(fe_q1.id): "2 years", str(fe_q2.id): "No", str(fe_q3.id): "https://github.com/muktadir/app"}},
+                ]
+                for c in fe_candidates:
+                    db.add(CandidateEvaluation(job_id=fe_job.id, candidate_name=c["name"], candidate_email=c["email"], match_score=c["score"], deal_breaker_passed=c["pass"], deal_breaker_failed_reason=c["reason"], status=c["status"], key_answers_preview=c["preview"], answers=c["answers"]))
+                fe_job.applications_count = len(fe_candidates)
+                db.commit()
+                logger.info("Successfully seeded screening for Frontend Developer.")
+
+        # 3. Software Engineering Intern
+        se_job = db.execute(select(JobPosting).where(JobPosting.title == "Software Engineering Intern")).scalars().first()
+        if se_job:
+            existing_se_qs = db.execute(select(ScreeningQuestion).where(ScreeningQuestion.job_id == se_job.id)).scalars().all()
+            if not existing_se_qs:
+                se_q1 = ScreeningQuestion(
+                    job_id=se_job.id,
+                    question_text="Are you enrolled in or a graduate of a CS/Engineering degree program?",
+                    question_type=QuestionType.YES_NO.value,
+                    options=["Yes", "No"],
+                    expected_answer="Yes",
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.MANDATORY.value,
+                    deal_breaker_value="Yes",
+                    deal_breaker_label="Deal-Breaker: Mandatory Degree Enrolled",
+                    weight=40,
+                    order_index=1,
+                )
+                se_q2 = ScreeningQuestion(
+                    job_id=se_job.id,
+                    question_text="Can you commit to a 3-month full-time internship in Dhaka?",
+                    question_type=QuestionType.YES_NO.value,
+                    options=["Yes", "No"],
+                    expected_answer="Yes",
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.MANDATORY.value,
+                    deal_breaker_value="Yes",
+                    deal_breaker_label="Deal-Breaker: Full-time Commitment",
+                    weight=40,
+                    order_index=2,
+                )
+                se_q3 = ScreeningQuestion(
+                    job_id=se_job.id,
+                    question_text="Primary coding language & competitive programming profile link",
+                    question_type=QuestionType.TEXT.value,
+                    is_required=False,
+                    is_deal_breaker=False,
+                    weight=20,
+                    order_index=3,
+                )
+                db.add_all([se_q1, se_q2, se_q3])
+                db.flush()
+
+                se_candidates = [
+                    {"name": "Rashedul Islam", "email": "23201201@uap-bd.edu", "score": 96.0, "pass": True, "reason": None, "status": CandidateStatus.SHORTLISTED.value, "preview": "CS Final Year • Full-time Committed • codeforces.com/rashedul", "answers": {str(se_q1.id): "Yes", str(se_q2.id): "Yes", str(se_q3.id): "C++ • codeforces.com/rashedul"}},
+                    {"name": "Saif Ahmed", "email": "saif@test.com", "score": 86.0, "pass": True, "reason": None, "status": CandidateStatus.SHORTLISTED.value, "preview": "CS 3rd Year • Full-time Committed • leetcode.com/saif", "answers": {str(se_q1.id): "Yes", str(se_q2.id): "Yes", str(se_q3.id): "Python • leetcode.com/saif"}},
+                    {"name": "Farhan Tanvir", "email": "farhan@test.com", "score": 82.0, "pass": True, "reason": None, "status": CandidateStatus.UNDER_REVIEW.value, "preview": "SE Graduate • Full-time Committed • github.com/farhan", "answers": {str(se_q1.id): "Yes", str(se_q2.id): "Yes", str(se_q3.id): "Java • github.com/farhan"}},
+                    {"name": "Applicant Intern", "email": "intern.cand@test.com", "score": 42.0, "pass": False, "reason": "Failed deal-breaker: Cannot commit to full-time", "status": CandidateStatus.DISQUALIFIED.value, "preview": "CS 2nd Year • Part-time Only", "answers": {str(se_q1.id): "Yes", str(se_q2.id): "No", str(se_q3.id): "Python"}},
+                ]
+                for c in se_candidates:
+                    db.add(CandidateEvaluation(job_id=se_job.id, candidate_name=c["name"], candidate_email=c["email"], match_score=c["score"], deal_breaker_passed=c["pass"], deal_breaker_failed_reason=c["reason"], status=c["status"], key_answers_preview=c["preview"], answers=c["answers"]))
+                se_job.applications_count = len(se_candidates)
+                db.commit()
+                logger.info("Successfully seeded screening for Software Engineering Intern.")
+
+        # 4. QA & Automation Intern
+        qa_job = db.execute(select(JobPosting).where(JobPosting.title == "QA & Automation Intern")).scalars().first()
+        if qa_job:
+            existing_qa_qs = db.execute(select(ScreeningQuestion).where(ScreeningQuestion.job_id == qa_job.id)).scalars().all()
+            if not existing_qa_qs:
+                qa_q1 = ScreeningQuestion(
+                    job_id=qa_job.id,
+                    question_text="Do you have hands-on experience with Python and Selenium or Playwright?",
+                    question_type=QuestionType.YES_NO.value,
+                    options=["Yes", "No"],
+                    expected_answer="Yes",
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.MANDATORY.value,
+                    deal_breaker_value="Yes",
+                    deal_breaker_label="Deal-Breaker: Mandatory Testing Skills",
+                    weight=50,
+                    order_index=1,
+                )
+                qa_q2 = ScreeningQuestion(
+                    job_id=qa_job.id,
+                    question_text="Can you commit to a 6-month remote internship?",
+                    question_type=QuestionType.YES_NO.value,
+                    options=["Yes", "No"],
+                    expected_answer="Yes",
+                    is_required=True,
+                    is_deal_breaker=True,
+                    deal_breaker_rule=DealBreakerRule.MANDATORY.value,
+                    deal_breaker_value="Yes",
+                    deal_breaker_label="Deal-Breaker: 6-Month Commitment",
+                    weight=30,
+                    order_index=2,
+                )
+                qa_q3 = ScreeningQuestion(
+                    job_id=qa_job.id,
+                    question_text="Link to sample automation scripts or Postman collections",
+                    question_type=QuestionType.TEXT.value,
+                    is_required=False,
+                    is_deal_breaker=False,
+                    weight=20,
+                    order_index=3,
+                )
+                db.add_all([qa_q1, qa_q2, qa_q3])
+                db.flush()
+
+                qa_candidates = [
+                    {"name": "Rashedul Islam", "email": "23201201@uap-bd.edu", "score": 94.0, "pass": True, "reason": None, "status": CandidateStatus.SHORTLISTED.value, "preview": "Python/Selenium Confirmed • 6-Month Committed • github.com/rashedul/test-suite", "answers": {str(qa_q1.id): "Yes", str(qa_q2.id): "Yes", str(qa_q3.id): "https://github.com/rashedul/test-suite"}},
+                    {"name": "Nusrat Jahan", "email": "nusrat@test.com", "score": 84.0, "pass": True, "reason": None, "status": CandidateStatus.SHORTLISTED.value, "preview": "Python/Playwright Confirmed • 6-Month Committed • postman.com/nusrat", "answers": {str(qa_q1.id): "Yes", str(qa_q2.id): "Yes", str(qa_q3.id): "https://postman.com/nusrat"}},
+                    {"name": "Candidate QA", "email": "qa.dev@test.com", "score": 40.0, "pass": False, "reason": "Failed deal-breaker: No automated testing experience", "status": CandidateStatus.DISQUALIFIED.value, "preview": "Manual QA Only", "answers": {str(qa_q1.id): "No", str(qa_q2.id): "Yes", str(qa_q3.id): "N/A"}},
+                ]
+                for c in qa_candidates:
+                    db.add(CandidateEvaluation(job_id=qa_job.id, candidate_name=c["name"], candidate_email=c["email"], match_score=c["score"], deal_breaker_passed=c["pass"], deal_breaker_failed_reason=c["reason"], status=c["status"], key_answers_preview=c["preview"], answers=c["answers"]))
+                qa_job.applications_count = len(qa_candidates)
+                db.commit()
+                logger.info("Successfully seeded screening for QA & Automation Intern.")
         # Seed Forum Categories and Sample Discussions (SKL-14)
         logger.info("Checking forum categories and discussions...")
         categories_data = [
