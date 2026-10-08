@@ -1,7 +1,7 @@
 """Create courses, course_modules, and lessons tables for LMS Module (SKL-53)
 
 Revision ID: 20261007_0004
-Revises: 20261003_0003
+Revises: 20261004_0004
 Create Date: 2026-10-07 18:30:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "20261007_0004"
-down_revision: Union[str, None] = "20261003_0003"
+down_revision: Union[str, None] = "20261004_0004"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

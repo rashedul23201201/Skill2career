@@ -348,6 +348,110 @@ def seed_database():
                 db.commit()
                 logger.info("Successfully seeded %d sample courses with curriculum.", len(sample_courses))
 
+        # Recruitment Job Posting Seeding (SKL-4)
+        from app.models.job import JobPosting, JobStatus, JobPostingType, JobWorkMode, JobExperienceLevel
+        company_user = db.execute(select(User).where(User.email == "company@skill2career.com")).scalar_one_or_none()
+        if company_user:
+            jobs_count = db.execute(select(func.count(JobPosting.id))).scalar() or 0
+            if jobs_count == 0:
+                logger.info("Seeding initial job postings matching UI designs...")
+                sample_jobs = [
+                    {
+                        "title": "Junior Software Developer",
+                        "posting_type": JobPostingType.JOB.value,
+                        "work_mode": JobWorkMode.ON_SITE.value,
+                        "location": "Dhaka",
+                        "description": "We are looking for a passionate Junior Software Developer to join our core backend engineering team. You will build and scale high-throughput REST APIs and collaborate with senior architects.",
+                        "requirements": "Strong foundation in data structures and object-oriented programming. Hands-on experience with Java or Python. Familiarity with SQL and relational database modeling.",
+                        "skills": ["Java", "Python", "SQL"],
+                        "compensation": "৳35K – ৳50K",
+                        "experience_level": JobExperienceLevel.ENTRY_LEVEL.value,
+                        "category": "Software Engineering",
+                        "status": JobStatus.ACTIVE.value,
+                        "applications_count": 42,
+                    },
+                    {
+                        "title": "Software Engineering Intern",
+                        "posting_type": JobPostingType.INTERNSHIP.value,
+                        "work_mode": JobWorkMode.ON_SITE.value,
+                        "location": "Dhaka",
+                        "description": "A 3-month immersive internship for university undergraduates or recent graduates. Gain production experience with modern distributed systems and fintech pipelines.",
+                        "requirements": "Proficiency in C++ or Python. Solid grasp of algorithmic problem-solving and version control using Git.",
+                        "skills": ["C++", "Git", "Problem Solving"],
+                        "compensation": "3 Months · ৳20K / month",
+                        "duration": "3 Months",
+                        "experience_level": JobExperienceLevel.INTERNSHIP.value,
+                        "category": "Software Engineering",
+                        "status": JobStatus.ACTIVE.value,
+                        "applications_count": 31,
+                    },
+                    {
+                        "title": "Frontend Developer",
+                        "posting_type": JobPostingType.JOB.value,
+                        "work_mode": JobWorkMode.HYBRID.value,
+                        "location": "Dhaka",
+                        "description": "Join our frontend engineering guild to build responsive, accessible, and high-performance web applications using React, TailwindCSS, and TypeScript.",
+                        "requirements": "Demonstrated expertise with React 18/19, TailwindCSS, TypeScript, and state management. Strong eye for UI aesthetics and UX precision.",
+                        "skills": ["React", "Tailwind", "TypeScript"],
+                        "compensation": "৳50K – ৳70K",
+                        "experience_level": JobExperienceLevel.JUNIOR.value,
+                        "category": "Web Development",
+                        "status": JobStatus.ACTIVE.value,
+                        "applications_count": 19,
+                    },
+                    {
+                        "title": "QA & Automation Intern",
+                        "posting_type": JobPostingType.INTERNSHIP.value,
+                        "work_mode": JobWorkMode.REMOTE.value,
+                        "location": "Remote, Bangladesh",
+                        "description": "6-month QA internship working directly with quality engineers to write automated test scripts, run API validation suites, and document regression test plans.",
+                        "requirements": "Understanding of software testing lifecycles, basic Python scripting, Selenium or Playwright, and API testing with Postman.",
+                        "skills": ["Python", "Selenium", "Postman"],
+                        "compensation": "6 Months · ৳18K / month",
+                        "duration": "6 Months",
+                        "experience_level": JobExperienceLevel.INTERNSHIP.value,
+                        "category": "QA & Automation",
+                        "status": JobStatus.ACTIVE.value,
+                        "applications_count": 12,
+                    },
+                    {
+                        "title": "Senior Cloud Solutions Architect",
+                        "posting_type": JobPostingType.JOB.value,
+                        "work_mode": JobWorkMode.REMOTE.value,
+                        "location": "Dhaka",
+                        "description": "Architect and oversee enterprise cloud migrations and microservice deployments on AWS and Azure.",
+                        "requirements": "5+ years of distributed systems design, Docker/Kubernetes orchestration, and CI/CD automation.",
+                        "skills": ["AWS", "Docker", "Kubernetes"],
+                        "compensation": "৳120K – ৳160K",
+                        "experience_level": JobExperienceLevel.SENIOR.value,
+                        "category": "Cloud & DevOps",
+                        "status": JobStatus.DRAFT.value,
+                        "applications_count": 0,
+                    },
+                ]
+
+                for j_data in sample_jobs:
+                    job = JobPosting(
+                        company_id=company_user.id,
+                        title=j_data["title"],
+                        posting_type=j_data["posting_type"],
+                        work_mode=j_data["work_mode"],
+                        location=j_data["location"],
+                        description=j_data["description"],
+                        requirements=j_data["requirements"],
+                        skills=j_data["skills"],
+                        compensation=j_data["compensation"],
+                        duration=j_data.get("duration"),
+                        experience_level=j_data["experience_level"],
+                        category=j_data["category"],
+                        status=j_data["status"],
+                        applications_count=j_data["applications_count"],
+                    )
+                    db.add(job)
+
+                db.commit()
+                logger.info("Successfully seeded %d sample job postings.", len(sample_jobs))
+
     except Exception as e:
         db.rollback()
         logger.error("Seeding failed: %s", str(e))
