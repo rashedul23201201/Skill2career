@@ -57,6 +57,17 @@ from app.schemas.course import (
     CurriculumSyncRequest,
     PaginatedCourseResponse,
 )
+from app.schemas.job import (
+    JobPostingType,
+    JobWorkMode,
+    JobStatus,
+    JobExperienceLevel,
+    JobPostingCreateRequest,
+    JobPostingUpdateRequest,
+    JobPostingStatusUpdateRequest,
+    JobPostingResponse,
+    PaginatedJobPostingResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -104,4 +115,13 @@ __all__ = [
     "LessonSchema",
     "CurriculumSyncRequest",
     "PaginatedCourseResponse",
+    "JobPostingType",
+    "JobWorkMode",
+    "JobStatus",
+    "JobExperienceLevel",
+    "JobPostingCreateRequest",
+    "JobPostingUpdateRequest",
+    "JobPostingStatusUpdateRequest",
+    "JobPostingResponse",
+    "PaginatedJobPostingResponse",
 ]

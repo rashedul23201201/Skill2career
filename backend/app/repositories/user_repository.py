@@ -127,6 +127,14 @@ class UserRepository:
         except Exception:
             active_courses = 0
 
+        try:
+            from app.models.job import JobPosting, JobStatus
+            active_jobs = db.execute(
+                select(func.count(JobPosting.id)).where(JobPosting.status == JobStatus.ACTIVE.value)
+            ).scalar() or 0
+        except Exception:
+            active_jobs = 0
+
         active_users = db.execute(select(func.count(User.id)).where(User.is_active == True)).scalar() or 0
 
         inactive_users = total_users - active_users
@@ -139,6 +147,7 @@ class UserRepository:
             "total_users": total_users,
             "total_companies": total_companies,
             "active_courses": active_courses,
+            "active_jobs": active_jobs,
             "pending_approvals": pending_approvals,
             "active_users": active_users,
             "inactive_users": inactive_users,

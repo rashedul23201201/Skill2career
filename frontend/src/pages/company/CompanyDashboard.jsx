@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import companyService from "../../services/companyService";
+import jobService from "../../services/jobService";
 import Button from "../../components/forms/Button";
 import Input from "../../components/forms/Input";
 import { ROUTES } from "../../constants";
@@ -64,6 +65,10 @@ export const CompanyDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+
+  // Vacancies State (SKL-4)
+  const [jobs, setJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -138,8 +143,23 @@ export const CompanyDashboard = () => {
     }
   };
 
+  const fetchJobs = async () => {
+    try {
+      setLoadingJobs(true);
+      const res = await jobService.getJobs({ my_jobs: true });
+      if (res?.data?.items) {
+        setJobs(res.data.items);
+      }
+    } catch (err) {
+      console.error("Failed to load company vacancies:", err);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
   useEffect(() => {
     fetchCompanyProfile();
+    fetchJobs();
   }, []);
 
   // Compute initials avatar (e.g. BS for Brain Station 23)
@@ -354,7 +374,10 @@ export const CompanyDashboard = () => {
 
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => fetchCompanyProfile(true)}
+            onClick={() => {
+              fetchCompanyProfile(true);
+              fetchJobs();
+            }}
             disabled={refreshing}
             className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"
             title="Refresh dashboard data"
@@ -595,7 +618,7 @@ export const CompanyDashboard = () => {
 
             <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span>0 Active Job Openings</span>
+              <span>{jobs.filter((j) => j.status === "ACTIVE").length} Active Job Openings</span>
             </div>
           </div>
         </div>
@@ -614,7 +637,9 @@ export const CompanyDashboard = () => {
             </div>
           </div>
           <div>
-            <div className="text-3xl font-black text-navy-950 font-heading">0</div>
+            <div className="text-3xl font-black text-navy-950 font-heading">
+              {jobs.filter((j) => j.status === "ACTIVE").length}
+            </div>
             <p className="text-xs text-slate-500 mt-1">Currently listed vacancies</p>
           </div>
         </div>
@@ -686,13 +711,23 @@ export const CompanyDashboard = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
           {/* Quick Action 1: + Post Job */}
-          <button
-            onClick={() => setIsActionModalOpen("job")}
-            className="flex items-center justify-center space-x-2 px-6 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm shadow hover:from-emerald-700 hover:to-emerald-600 transition-all hover:shadow-md cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Post Job</span>
-          </button>
+          {isVerified ? (
+            <Link
+              to={ROUTES.JOB_NEW}
+              className="flex items-center justify-center space-x-2 px-6 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm shadow hover:from-emerald-700 hover:to-emerald-600 transition-all hover:shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Post Job</span>
+            </Link>
+          ) : (
+            <button
+              onClick={() => setIsActionModalOpen("job")}
+              className="flex items-center justify-center space-x-2 px-6 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm shadow hover:from-emerald-700 hover:to-emerald-600 transition-all hover:shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Post Job</span>
+            </button>
+          )}
 
           {/* Quick Action 2: View Candidates */}
           <button
@@ -712,6 +747,121 @@ export const CompanyDashboard = () => {
             <span>View Interviews</span>
           </button>
         </div>
+      </div>
+
+      {/* 5b. Active Job Posts (Recruitment Pipeline - SKL-4) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-navy-950 font-heading">
+              Active Job Posts & Vacancies
+            </h3>
+            <p className="text-xs text-slate-500">
+              Manage your company's open opportunities, applications, and hiring status
+            </p>
+          </div>
+          {isVerified && (
+            <Link
+              to={ROUTES.JOB_NEW}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create New Vacancy</span>
+            </Link>
+          )}
+        </div>
+
+        {loadingJobs ? (
+          <div className="py-8 flex justify-center items-center text-slate-400 text-sm">
+            <RefreshCw className="w-5 h-5 animate-spin mr-2 text-blue-600" />
+            Loading job listings...
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="text-center py-10 space-y-3">
+            <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-sm font-semibold text-slate-600">No vacancies published yet</p>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Post job or internship openings to start receiving verified candidate applications.
+            </p>
+            {isVerified && (
+              <Link
+                to={ROUTES.JOB_NEW}
+                className="inline-block mt-2 px-4 py-2 rounded-xl bg-navy-950 hover:bg-navy-900 text-white text-xs font-bold"
+              >
+                Post First Vacancy
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600">
+              <thead className="bg-slate-50 uppercase text-[10px] font-bold tracking-wider text-slate-400 border-b border-slate-100">
+                <tr>
+                  <th className="py-3 px-4">Role Title</th>
+                  <th className="py-3 px-4">Type & Mode</th>
+                  <th className="py-3 px-4">Compensation</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Applications</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {jobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-slate-50/75 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-navy-950 text-sm">{job.title}</div>
+                      <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3" />
+                        {job.location}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 mr-1.5">
+                        {job.posting_type}
+                      </span>
+                      <span className="text-[11px] text-slate-500">{job.work_mode}</span>
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-slate-700">
+                      {job.compensation}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          job.status === "ACTIVE"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : job.status === "DRAFT"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}
+                      >
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-navy-950">
+                      {job.applications_count || 0}
+                    </td>
+                    <td className="py-3.5 px-4 text-right space-x-2">
+                      <Link
+                        to={`/jobs/${job.id}`}
+                        className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        View
+                      </Link>
+                      <Link
+                        to={`/jobs/${job.id}/manage`}
+                        className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
+                      >
+                        <Edit3 className="w-3 h-3 mr-1" />
+                        Edit
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* 6. Edit Profile Modal (Inline Editing of Tagline, Size, Address, Assets) */}

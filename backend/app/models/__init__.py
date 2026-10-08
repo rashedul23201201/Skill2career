@@ -5,6 +5,7 @@ from app.models.token import RefreshToken, PasswordResetToken, EmailVerification
 from app.models.profile import LearnerProfile, InstructorProfile, CompanyProfile
 from app.models.audit_log import AuditLog
 from app.models.course import Course, CourseModule, Lesson, CourseLevel, CourseStatus
+from app.models.job import JobPosting, JobPostingType, JobWorkMode, JobStatus, JobExperienceLevel
 
 __all__ = [
     "User",
@@ -21,6 +22,11 @@ __all__ = [
     "Lesson",
     "CourseLevel",
     "CourseStatus",
+    "JobPosting",
+    "JobPostingType",
+    "JobWorkMode",
+    "JobStatus",
+    "JobExperienceLevel",
 ]
 
 

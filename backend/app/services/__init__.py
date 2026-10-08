@@ -6,6 +6,7 @@ from app.services.learner_service import LearnerService
 from app.services.company_service import CompanyService
 from app.services.instructor_service import InstructorService
 from app.services.course_service import CourseService
+from app.services.job_service import JobService
 
 __all__ = [
     "AuthService",
@@ -14,4 +15,5 @@ __all__ = [
     "CompanyService",
     "InstructorService",
     "CourseService",
+    "JobService",
 ]

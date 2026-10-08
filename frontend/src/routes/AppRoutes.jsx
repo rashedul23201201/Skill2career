@@ -18,6 +18,9 @@ import { CompanyDashboard, CompanyPublicProfile } from "../pages/company";
 import CompanyVerification from "../pages/company/CompanyVerification";
 import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 import InstructorApply from "../pages/instructor/InstructorApply";
+import Jobs from "../pages/Jobs";
+import JobDetails from "../pages/JobDetails";
+import JobManagement from "../pages/JobManagement";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -72,14 +75,31 @@ export const AppRoutes = () => {
           }
         />
 
+        {/* Sprint 2 Recruitment Routes (SKL-4) */}
+        <Route path={ROUTES.JOBS} element={<Jobs />} />
+        <Route path={ROUTES.JOB_DETAILS} element={<JobDetails />} />
         <Route
-          path={ROUTES.JOBS}
+          path={ROUTES.JOB_NEW}
           element={
-            <FeaturePlaceholder
-              title="Jobs & Internships"
-              sprint="Sprint 3"
-              description="Direct placement pipeline matching validated learner competencies with vetted hiring companies."
-            />
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <JobManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.JOB_MANAGE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <JobManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.COMPANY_JOBS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <Jobs />
+            </ProtectedRoute>
           }
         />
         <Route
