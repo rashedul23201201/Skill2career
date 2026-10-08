@@ -1,7 +1,7 @@
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session, joinedload
-from app.models.mock_test import MockTest, TestQuestion, MockTestStatus
+from app.models.mock_test import MockTest, TestQuestion, MockTestStatus, TestAttempt, TestAttemptStatus
 from app.models.user import User
 
 
@@ -145,3 +145,57 @@ class MockTestRepository:
         db.commit()
         db.refresh(test)
         return created_questions
+
+    @staticmethod
+    def create_attempt(db: Session, attempt: TestAttempt) -> TestAttempt:
+        db.add(attempt)
+        db.commit()
+        db.refresh(attempt)
+        return attempt
+
+    @staticmethod
+    def get_attempt_by_id(db: Session, attempt_id: int) -> Optional[TestAttempt]:
+        stmt = (
+            select(TestAttempt)
+            .options(
+                joinedload(TestAttempt.test),
+                joinedload(TestAttempt.learner),
+            )
+            .where(TestAttempt.id == attempt_id)
+        )
+        return db.execute(stmt).unique().scalar_one_or_none()
+
+    @staticmethod
+    def get_active_attempt_for_learner(db: Session, test_id: int, learner_id: int) -> Optional[TestAttempt]:
+        stmt = (
+            select(TestAttempt)
+            .options(joinedload(TestAttempt.test))
+            .where(
+                TestAttempt.test_id == test_id,
+                TestAttempt.learner_id == learner_id,
+                TestAttempt.status == TestAttemptStatus.ACTIVE.value,
+            )
+            .order_by(TestAttempt.id.desc())
+        )
+        return db.execute(stmt).scalars().first()
+
+    @staticmethod
+    def get_attempts_by_learner(
+        db: Session, learner_id: int, test_id: Optional[int] = None
+    ) -> List[TestAttempt]:
+        stmt = (
+            select(TestAttempt)
+            .options(joinedload(TestAttempt.test))
+            .where(TestAttempt.learner_id == learner_id)
+        )
+        if test_id:
+            stmt = stmt.where(TestAttempt.test_id == test_id)
+        stmt = stmt.order_by(TestAttempt.id.desc())
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def update_attempt(db: Session, attempt: TestAttempt) -> TestAttempt:
+        db.commit()
+        db.refresh(attempt)
+        return attempt
+

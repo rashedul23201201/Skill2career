@@ -1,4 +1,5 @@
 import math
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,13 @@ from app.core.exceptions import (
     BadRequestException,
 )
 from app.models.user import User, UserRole
-from app.models.mock_test import MockTest, TestQuestion, MockTestStatus
+from app.models.mock_test import (
+    MockTest,
+    TestQuestion,
+    MockTestStatus,
+    TestAttempt,
+    TestAttemptStatus,
+)
 from app.repositories.mock_test_repository import MockTestRepository
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.schemas.mock_test import (
@@ -20,10 +27,23 @@ from app.schemas.mock_test import (
     TestQuestionUpdate,
     TestQuestionResponse,
     PaginatedMockTestResponse,
+    TestAttemptStartResponse,
+    TestAttemptSaveAnswersRequest,
+    TestAttemptSubmitRequest,
+    TestAttemptResponse,
 )
 
 
+def _ensure_utc(dt: Optional[datetime]) -> datetime:
+    if dt is None:
+        return datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 class MockTestService:
+
     """Service handling Mock Test creation, question bank builder, and test discovery (SKL-56)."""
 
     def __init__(
@@ -68,6 +88,62 @@ class MockTestService:
             created_at=q.created_at,
             updated_at=q.updated_at,
         )
+
+    def _to_attempt_response(self, attempt: TestAttempt) -> TestAttemptResponse:
+        test_title = attempt.test.title if attempt.test else None
+        category = attempt.test.category if attempt.test else None
+        duration = attempt.test.duration_minutes if attempt.test else None
+        passing = attempt.test.passing_score if attempt.test else None
+        total_q = attempt.test.total_questions if attempt.test else None
+
+        return TestAttemptResponse(
+            id=attempt.id,
+            test_id=attempt.test_id,
+            learner_id=attempt.learner_id,
+            started_at=attempt.started_at,
+            submitted_at=attempt.submitted_at,
+            status=attempt.status,
+            score=attempt.score,
+            total_marks=attempt.total_marks,
+            percentage=attempt.percentage,
+            is_passed=attempt.is_passed,
+            time_taken_seconds=attempt.time_taken_seconds,
+            answers=attempt.answers or {},
+            marked_for_review=attempt.marked_for_review or [],
+            test_title=test_title,
+            category=category,
+            duration_minutes=duration,
+            passing_score=passing,
+            total_questions=total_q,
+        )
+
+    def _to_attempt_start_response(
+        self, test: MockTest, attempt: TestAttempt, remaining_seconds: int
+    ) -> TestAttemptStartResponse:
+        duration_seconds = test.duration_minutes * 60
+        started_at = _ensure_utc(attempt.started_at)
+        expires_at = started_at + timedelta(seconds=duration_seconds)
+        questions = [self._to_question_response(q, hide_answers=True) for q in test.questions]
+
+        return TestAttemptStartResponse(
+            id=attempt.id,
+            test_id=test.id,
+            learner_id=attempt.learner_id,
+            started_at=started_at,
+            expires_at=expires_at,
+            duration_minutes=test.duration_minutes,
+            duration_seconds=duration_seconds,
+            remaining_seconds=max(0, remaining_seconds),
+            status=attempt.status,
+            answers=attempt.answers or {},
+            marked_for_review=attempt.marked_for_review or [],
+            test_title=test.title,
+            category=test.category,
+            total_questions=test.total_questions or len(questions),
+            passing_score=test.passing_score,
+            questions=questions,
+        )
+
 
     def _verify_management_access(self, test: MockTest, user: User) -> None:
         if user.role == UserRole.ADMIN:
@@ -332,3 +408,221 @@ class MockTestService:
         raw_dicts = [q.model_dump() for q in questions_data]
         created = self.mock_test_repo.sync_questions(db, test, raw_dicts)
         return [self._to_question_response(q) for q in created]
+
+    def start_attempt(self, db: Session, test_id: int, current_user: User) -> TestAttemptStartResponse:
+        test = self.mock_test_repo.get_by_id(db, test_id)
+        if not test:
+            raise NotFoundException("Mock test not found")
+
+        is_manager = (
+            current_user.role == UserRole.ADMIN
+            or (current_user.role == UserRole.INSTRUCTOR and test.instructor_id == current_user.id)
+        )
+        if not test.is_published and not is_manager:
+            raise ForbiddenException("This mock test is not published yet")
+
+        now = datetime.now(timezone.utc)
+
+        active_attempt = self.mock_test_repo.get_active_attempt_for_learner(db, test.id, current_user.id)
+        if active_attempt:
+            active_started = _ensure_utc(active_attempt.started_at)
+            elapsed = (now - active_started).total_seconds()
+            total_duration = test.duration_minutes * 60
+            remaining = int(total_duration - elapsed)
+            if remaining <= 0:
+                self.submit_attempt_answers(
+                    db=db,
+                    attempt_id=active_attempt.id,
+                    current_user=current_user,
+                    request=None,
+                    is_auto_expired=True,
+                )
+            else:
+                return self._to_attempt_start_response(test, active_attempt, remaining_seconds=remaining)
+
+        new_attempt = TestAttempt(
+            test_id=test.id,
+            learner_id=current_user.id,
+            started_at=now,
+            status=TestAttemptStatus.ACTIVE.value,
+            answers={},
+            marked_for_review=[],
+            score=0.0,
+            total_marks=0,
+            percentage=0.0,
+            is_passed=False,
+            time_taken_seconds=0,
+        )
+        created_attempt = self.mock_test_repo.create_attempt(db, new_attempt)
+
+        self.audit_repo.create(
+            db=db,
+            action="MOCK_TEST_ATTEMPT_START",
+            admin_id=current_user.id if current_user.role == UserRole.ADMIN else None,
+            target_user_id=current_user.id,
+            details={"attempt_id": created_attempt.id, "test_id": test.id, "title": test.title},
+        )
+
+        return self._to_attempt_start_response(
+            test, created_attempt, remaining_seconds=test.duration_minutes * 60
+        )
+
+    def get_attempt(
+        self, db: Session, attempt_id: int, current_user: User
+    ) -> TestAttemptStartResponse:
+        attempt = self.mock_test_repo.get_attempt_by_id(db, attempt_id)
+        if not attempt:
+            raise NotFoundException("Test attempt not found")
+
+        if attempt.learner_id != current_user.id and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException("You do not have permission to view this test attempt")
+
+        now = datetime.now(timezone.utc)
+        test = attempt.test
+        total_duration = test.duration_minutes * 60
+        attempt_started = _ensure_utc(attempt.started_at)
+        elapsed = (now - attempt_started).total_seconds()
+        remaining = int(total_duration - elapsed)
+
+        if attempt.status == TestAttemptStatus.ACTIVE.value and remaining <= 0:
+            self.submit_attempt_answers(
+                db=db,
+                attempt_id=attempt.id,
+                current_user=current_user,
+                request=None,
+                is_auto_expired=True,
+            )
+            attempt = self.mock_test_repo.get_attempt_by_id(db, attempt_id)
+            remaining = 0
+
+        return self._to_attempt_start_response(
+            test, attempt, remaining_seconds=max(0, remaining)
+        )
+
+    def save_attempt_answers(
+        self,
+        db: Session,
+        attempt_id: int,
+        current_user: User,
+        request: TestAttemptSaveAnswersRequest,
+    ) -> TestAttemptResponse:
+        attempt = self.mock_test_repo.get_attempt_by_id(db, attempt_id)
+        if not attempt:
+            raise NotFoundException("Test attempt not found")
+
+        if attempt.learner_id != current_user.id and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException("You do not have permission to modify this test attempt")
+
+        if attempt.status != TestAttemptStatus.ACTIVE.value:
+            raise BadRequestException("Cannot update answers for an inactive or submitted test attempt")
+
+        now = datetime.now(timezone.utc)
+        attempt_started = _ensure_utc(attempt.started_at)
+        elapsed = (now - attempt_started).total_seconds()
+        if elapsed > attempt.test.duration_minutes * 60:
+            return self.submit_attempt_answers(
+                db=db,
+                attempt_id=attempt.id,
+                current_user=current_user,
+                request=TestAttemptSubmitRequest(
+                    answers=request.answers,
+                    marked_for_review=request.marked_for_review,
+                ),
+                is_auto_expired=True,
+            )
+
+        attempt.answers = request.answers or {}
+        attempt.marked_for_review = request.marked_for_review or []
+        updated = self.mock_test_repo.update_attempt(db, attempt)
+        return self._to_attempt_response(updated)
+
+    def submit_attempt_answers(
+        self,
+        db: Session,
+        attempt_id: int,
+        current_user: User,
+        request: Optional[TestAttemptSubmitRequest] = None,
+        is_auto_expired: bool = False,
+    ) -> TestAttemptResponse:
+        attempt = self.mock_test_repo.get_attempt_by_id(db, attempt_id)
+        if not attempt:
+            raise NotFoundException("Test attempt not found")
+
+        if attempt.learner_id != current_user.id and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException("You do not have permission to submit this test attempt")
+
+        if attempt.status in [TestAttemptStatus.SUBMITTED.value, TestAttemptStatus.EXPIRED.value]:
+            return self._to_attempt_response(attempt)
+
+        answers = dict(attempt.answers or {})
+        if request and request.answers:
+            answers.update(request.answers)
+        marked_for_review = (
+            request.marked_for_review
+            if request and request.marked_for_review is not None
+            else (attempt.marked_for_review or [])
+        )
+
+        questions = self.mock_test_repo.get_questions_by_test_id(db, attempt.test_id)
+        total_marks = sum(q.marks for q in questions)
+        score = 0.0
+
+        for q in questions:
+            qid_str = str(q.id)
+            given_answer = answers.get(qid_str) or answers.get(q.id)
+            if (
+                given_answer
+                and str(given_answer).strip().upper() == str(q.correct_option).strip().upper()
+            ):
+                score += q.marks
+
+        percentage = round((score / total_marks * 100), 2) if total_marks > 0 else 0.0
+        is_passed = percentage >= attempt.test.passing_score
+
+        now = datetime.now(timezone.utc)
+        duration_limit = attempt.test.duration_minutes * 60
+        attempt_started = _ensure_utc(attempt.started_at)
+        elapsed = int((now - attempt_started).total_seconds())
+        time_taken = max(0, min(elapsed, duration_limit))
+
+
+        attempt.answers = answers
+        attempt.marked_for_review = marked_for_review
+        attempt.score = score
+        attempt.total_marks = total_marks
+        attempt.percentage = percentage
+        attempt.is_passed = is_passed
+        attempt.time_taken_seconds = time_taken
+        attempt.submitted_at = now
+        attempt.status = (
+            TestAttemptStatus.EXPIRED.value if is_auto_expired else TestAttemptStatus.SUBMITTED.value
+        )
+
+        updated = self.mock_test_repo.update_attempt(db, attempt)
+
+        self.audit_repo.create(
+            db=db,
+            action="MOCK_TEST_ATTEMPT_SUBMIT",
+            admin_id=current_user.id if current_user.role == UserRole.ADMIN else None,
+            target_user_id=current_user.id,
+            details={
+                "attempt_id": updated.id,
+                "test_id": attempt.test_id,
+                "score": score,
+                "total_marks": total_marks,
+                "percentage": percentage,
+                "is_passed": is_passed,
+                "is_auto_expired": is_auto_expired,
+            },
+        )
+
+        return self._to_attempt_response(updated)
+
+    def get_learner_attempts(
+        self, db: Session, current_user: User, test_id: Optional[int] = None
+    ) -> List[TestAttemptResponse]:
+        attempts = self.mock_test_repo.get_attempts_by_learner(
+            db=db, learner_id=current_user.id, test_id=test_id
+        )
+        return [self._to_attempt_response(a) for a in attempts]
+
