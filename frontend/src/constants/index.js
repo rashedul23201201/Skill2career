@@ -39,6 +39,7 @@ export const ROUTES = {
   JOB_MANAGE: "/jobs/:id/manage",
   COMPANY_JOBS: "/company/jobs",
   FORUM: "/forum",
+  FORUM_POST_DETAILS: "/forum/posts/:id",
   MOCK_TESTS: "/mock-tests",
   MOCK_TEST_NEW: "/mock-tests/new",
   MOCK_TEST_MANAGE: "/mock-tests/:id/manage",

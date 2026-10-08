@@ -89,6 +89,23 @@ from app.schemas.mock_test import (
     TestAttemptSubmitRequest,
     TestAttemptResponse,
 )
+from app.schemas.forum import (
+    ForumCategoryResponse,
+    ForumCategoryCreate,
+    ForumAuthorResponse,
+    ForumPostCreate,
+    ForumPostUpdate,
+    ForumPostResponse,
+    ForumPostDetailResponse,
+    PaginatedForumPostResponse,
+    ForumCommentCreate,
+    ForumCommentUpdate,
+    ForumCommentResponse,
+    ForumLikeToggleResponse,
+    ForumReportCreate,
+    ForumReportResponse,
+    ForumReportStatusUpdate,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -159,4 +176,19 @@ __all__ = [
     "TestAttemptSaveAnswersRequest",
     "TestAttemptSubmitRequest",
     "TestAttemptResponse",
+    "ForumCategoryResponse",
+    "ForumCategoryCreate",
+    "ForumAuthorResponse",
+    "ForumPostCreate",
+    "ForumPostUpdate",
+    "ForumPostResponse",
+    "ForumPostDetailResponse",
+    "PaginatedForumPostResponse",
+    "ForumCommentCreate",
+    "ForumCommentUpdate",
+    "ForumCommentResponse",
+    "ForumLikeToggleResponse",
+    "ForumReportCreate",
+    "ForumReportResponse",
+    "ForumReportStatusUpdate",
 ]
