@@ -21,6 +21,8 @@ import InstructorApply from "../pages/instructor/InstructorApply";
 import Jobs from "../pages/Jobs";
 import JobDetails from "../pages/JobDetails";
 import JobManagement from "../pages/JobManagement";
+import MockTests from "../pages/MockTests";
+import MockTestManagement from "../pages/MockTestManagement";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -112,14 +114,22 @@ export const AppRoutes = () => {
             />
           }
         />
+        {/* Sprint 2 Assessment Mock Test Routes (SKL-56) */}
+        <Route path={ROUTES.MOCK_TESTS} element={<MockTests />} />
         <Route
-          path={ROUTES.MOCK_TESTS}
+          path={ROUTES.MOCK_TEST_NEW}
           element={
-            <FeaturePlaceholder
-              title="Mock Tests & Coding Assessments"
-              sprint="Sprint 2"
-              description="Real exam simulations and technical assessments with instant grading and badge credentials."
-            />
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <MockTestManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.MOCK_TEST_MANAGE}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.INSTRUCTOR, USER_ROLES.ADMIN]}>
+              <MockTestManagement />
+            </ProtectedRoute>
           }
         />
 

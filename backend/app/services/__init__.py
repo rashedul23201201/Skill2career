@@ -7,6 +7,7 @@ from app.services.company_service import CompanyService
 from app.services.instructor_service import InstructorService
 from app.services.course_service import CourseService
 from app.services.job_service import JobService
+from app.services.mock_test_service import MockTestService
 
 __all__ = [
     "AuthService",
@@ -16,4 +17,5 @@ __all__ = [
     "InstructorService",
     "CourseService",
     "JobService",
+    "MockTestService",
 ]

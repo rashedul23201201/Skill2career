@@ -8,6 +8,7 @@ from app.routers.company import router as company_router
 from app.routers.instructor import router as instructor_router
 from app.routers.course import router as course_router
 from app.routers.job import router as job_router
+from app.routers.mock_test import router as mock_test_router
 from app.routers.api_router import api_router
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "instructor_router",
     "course_router",
     "job_router",
+    "mock_test_router",
     "api_router",
 ]

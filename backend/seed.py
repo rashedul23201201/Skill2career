@@ -452,6 +452,181 @@ def seed_database():
                 db.commit()
                 logger.info("Successfully seeded %d sample job postings.", len(sample_jobs))
 
+        # Assessment Mock Test Seeding (SKL-56)
+        from app.models.mock_test import MockTest, TestQuestion, MockTestStatus
+        instructor_user = db.execute(select(User).where(User.email == "instructor@skill2career.com")).scalar_one_or_none()
+        if instructor_user:
+            tests_count = db.execute(select(func.count(MockTest.id))).scalar() or 0
+            if tests_count == 0:
+                logger.info("Seeding initial mock tests matching UI designs (SKL-56)...")
+                sample_mock_tests = [
+                    {
+                        "title": "Data Structures & Algorithms",
+                        "category": "Programming",
+                        "description": "Practice common DSA questions for technical assessments.",
+                        "duration_minutes": 60,
+                        "passing_score": 50,
+                        "status": MockTestStatus.PUBLISHED.value,
+                        "is_published": True,
+                        "questions": [
+                            {
+                                "question_text": "What is the worst-case time complexity of searching an element in a balanced Binary Search Tree (AVL / Red-Black Tree)?",
+                                "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+                                "correct_option": "B",
+                                "marks": 2,
+                                "explanation": "In a height-balanced BST, the tree height is bounded by O(log n), making lookup operations O(log n).",
+                            },
+                            {
+                                "question_text": "Which data structure follows the Last-In-First-Out (LIFO) property?",
+                                "options": ["Queue", "Stack", "Priority Queue", "Circular Array"],
+                                "correct_option": "B",
+                                "marks": 1,
+                                "explanation": "A Stack operates under the Last-In-First-Out (LIFO) order.",
+                            },
+                            {
+                                "question_text": "What is the space complexity of Depth First Search (DFS) on a graph with V vertices and E edges implemented recursively?",
+                                "options": ["O(1)", "O(V)", "O(V + E)", "O(E)"],
+                                "correct_option": "B",
+                                "marks": 2,
+                                "explanation": "Recursive DFS consumes call stack frames proportional to the maximum tree depth, which is O(V).",
+                            },
+                            {
+                                "question_text": "Which sorting algorithm achieves an average-case time complexity of O(n log n) and is stable?",
+                                "options": ["Quick Sort", "Heap Sort", "Merge Sort", "Selection Sort"],
+                                "correct_option": "C",
+                                "marks": 2,
+                                "explanation": "Merge Sort guarantees O(n log n) in all cases and preserves relative order of duplicate elements.",
+                            },
+                        ],
+                    },
+                    {
+                        "title": "Database Fundamentals",
+                        "category": "Database",
+                        "description": "Test your knowledge on relational schema design, SQL queries, and normalization.",
+                        "duration_minutes": 45,
+                        "passing_score": 50,
+                        "status": MockTestStatus.PUBLISHED.value,
+                        "is_published": True,
+                        "questions": [
+                            {
+                                "question_text": "Which normal form requires eliminating partial dependencies on a composite primary key?",
+                                "options": ["1NF", "2NF", "3NF", "BCNF"],
+                                "correct_option": "B",
+                                "marks": 2,
+                                "explanation": "Second Normal Form (2NF) enforces that all non-key attributes are fully functionally dependent on the primary key.",
+                            },
+                            {
+                                "question_text": "Which SQL clause is used to filter aggregated group values?",
+                                "options": ["WHERE", "HAVING", "GROUP BY", "ORDER BY"],
+                                "correct_option": "B",
+                                "marks": 1,
+                                "explanation": "The HAVING clause filters groups created by GROUP BY, while WHERE filters individual rows.",
+                            },
+                            {
+                                "question_text": "What does the 'I' in ACID transaction properties stand for?",
+                                "options": ["Integrity", "Isolation", "Immutability", "Indexing"],
+                                "correct_option": "B",
+                                "marks": 1,
+                                "explanation": "ACID stands for Atomicity, Consistency, Isolation, and Durability.",
+                            },
+                        ],
+                    },
+                    {
+                        "title": "Web Development Basics",
+                        "category": "Web Development",
+                        "description": "Evaluate frontend essentials including HTML5 semantics, modern CSS, and DOM interactions.",
+                        "duration_minutes": 45,
+                        "passing_score": 50,
+                        "status": MockTestStatus.PUBLISHED.value,
+                        "is_published": True,
+                        "questions": [
+                            {
+                                "question_text": "Which CSS display property establishes a flexible box formatting context for layout?",
+                                "options": ["display: grid", "display: flex", "display: inline-block", "display: table"],
+                                "correct_option": "B",
+                                "marks": 1,
+                                "explanation": "display: flex activates the Flexbox layout model for child items.",
+                            },
+                            {
+                                "question_text": "What is the primary benefit of using semantic HTML5 elements such as <header>, <nav>, and <article>?",
+                                "options": ["Faster CSS rendering", "Improved accessibility and SEO", "Automatic JavaScript binding", "Browser-level caching"],
+                                "correct_option": "B",
+                                "marks": 2,
+                                "explanation": "Semantic tags allow screen readers, crawlers, and developers to understand the structure and role of content.",
+                            },
+                            {
+                                "question_text": "In modern React, which hook is used to perform side effects such as data fetching?",
+                                "options": ["useState", "useEffect", "useMemo", "useContext"],
+                                "correct_option": "B",
+                                "marks": 1,
+                                "explanation": "useEffect synchronizes a component with external systems and performs side effects.",
+                            },
+                        ],
+                    },
+                    {
+                        "title": "Object-Oriented Programming",
+                        "category": "Programming",
+                        "description": "Core concepts of OOP: classes, encapsulation, inheritance, polymorphism, and design patterns.",
+                        "duration_minutes": 40,
+                        "passing_score": 50,
+                        "status": MockTestStatus.PUBLISHED.value,
+                        "is_published": True,
+                        "questions": [
+                            {
+                                "question_text": "Which OOP pillar restricts direct access to internal state and requires interactions via methods?",
+                                "options": ["Inheritance", "Polymorphism", "Encapsulation", "Abstraction"],
+                                "correct_option": "C",
+                                "marks": 1,
+                                "explanation": "Encapsulation bundles data and methods while restricting direct external modification.",
+                            },
+                            {
+                                "question_text": "What principle in SOLID states that software entities should be open for extension but closed for modification?",
+                                "options": ["Single Responsibility Principle", "Open/Closed Principle", "Liskov Substitution Principle", "Dependency Inversion Principle"],
+                                "correct_option": "B",
+                                "marks": 2,
+                                "explanation": "The Open/Closed Principle (OCP) states modules should be open for extension but closed for modification.",
+                            },
+                            {
+                                "question_text": "Which design pattern ensures that a class has only one instance and provides a global access point?",
+                                "options": ["Factory Method", "Singleton", "Observer", "Adapter"],
+                                "correct_option": "B",
+                                "marks": 1,
+                                "explanation": "Singleton restricts instantiation of a class to a single object.",
+                            },
+                        ],
+                    },
+                ]
+
+                for t_data in sample_mock_tests:
+                    mtest = MockTest(
+                        instructor_id=instructor_user.id,
+                        title=t_data["title"],
+                        category=t_data["category"],
+                        description=t_data["description"],
+                        duration_minutes=t_data["duration_minutes"],
+                        passing_score=t_data["passing_score"],
+                        total_questions=len(t_data["questions"]),
+                        status=t_data["status"],
+                        is_published=t_data["is_published"],
+                    )
+                    db.add(mtest)
+                    db.flush()
+
+                    for idx, q_data in enumerate(t_data["questions"]):
+                        question = TestQuestion(
+                            test_id=mtest.id,
+                            question_text=q_data["question_text"],
+                            options=q_data["options"],
+                            correct_option=q_data["correct_option"],
+                            marks=q_data.get("marks", 1),
+                            explanation=q_data.get("explanation"),
+                            order_index=idx,
+                        )
+                        db.add(question)
+
+                db.commit()
+                logger.info("Successfully seeded %d sample mock tests with questions.", len(sample_mock_tests))
+
     except Exception as e:
         db.rollback()
         logger.error("Seeding failed: %s", str(e))

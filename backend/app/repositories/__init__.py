@@ -8,6 +8,7 @@ from app.repositories.job_repository import JobRepository
 from app.repositories.learner_repository import LearnerRepository
 from app.repositories.company_repository import CompanyRepository
 from app.repositories.instructor_repository import InstructorRepository
+from app.repositories.mock_test_repository import MockTestRepository
 
 __all__ = [
     "UserRepository",
@@ -18,4 +19,5 @@ __all__ = [
     "LearnerRepository",
     "CompanyRepository",
     "InstructorRepository",
+    "MockTestRepository",
 ]

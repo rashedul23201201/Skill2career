@@ -68,6 +68,18 @@ from app.schemas.job import (
     JobPostingResponse,
     PaginatedJobPostingResponse,
 )
+from app.schemas.mock_test import (
+    TestQuestionCreate,
+    TestQuestionUpdate,
+    TestQuestionResponse,
+    MockTestCreateRequest,
+    MockTestUpdateRequest,
+    MockTestStatusUpdateRequest,
+    MockTestResponse,
+    MockTestDetailResponse,
+    MockTestSyncQuestionsRequest,
+    PaginatedMockTestResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -124,4 +136,14 @@ __all__ = [
     "JobPostingStatusUpdateRequest",
     "JobPostingResponse",
     "PaginatedJobPostingResponse",
+    "TestQuestionCreate",
+    "TestQuestionUpdate",
+    "TestQuestionResponse",
+    "MockTestCreateRequest",
+    "MockTestUpdateRequest",
+    "MockTestStatusUpdateRequest",
+    "MockTestResponse",
+    "MockTestDetailResponse",
+    "MockTestSyncQuestionsRequest",
+    "PaginatedMockTestResponse",
 ]
