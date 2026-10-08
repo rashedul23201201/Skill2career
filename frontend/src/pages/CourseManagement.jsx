@@ -294,13 +294,39 @@ export const CourseManagement = () => {
     }));
   };
 
-  // Add File Attachment (simulated upload)
-  const handleAddAttachment = (e) => {
+  // Add File Attachment (direct upload or local preview)
+  const handleAddAttachment = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const file = files[0];
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+
+    if (activeLessonData.id && typeof activeLessonData.id === "number") {
+      try {
+        const uploadRes = await courseService.uploadLessonMaterial(activeLessonData.id, file);
+        if (uploadRes?.data) {
+          const uploaded = uploadRes.data;
+          setActiveLessonData((prev) => ({
+            ...prev,
+            attachments: [
+              ...(prev.attachments || []),
+              {
+                name: uploaded.name,
+                size: uploaded.size,
+                url: uploaded.file_url,
+                filename: uploaded.filename,
+              },
+            ],
+          }));
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+      } catch (err) {
+        console.warn("Backend material upload failed, using local preview:", err);
+      }
+    }
+
     const newAttachment = {
       name: file.name,
       size: `${sizeInMB} MB`,
@@ -311,7 +337,6 @@ export const CourseManagement = () => {
       attachments: [...(prev.attachments || []), newAttachment],
     }));
 
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -524,7 +549,7 @@ export const CourseManagement = () => {
         <div className="flex items-center space-x-3 self-start md:self-auto">
           {!isNew && (
             <Link
-              to={`/courses/${id}`}
+              to={`/courses/${id}/learn`}
               className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-navy-950 shadow-sm transition-all"
             >
               <Eye className="w-3.5 h-3.5 text-slate-600" />

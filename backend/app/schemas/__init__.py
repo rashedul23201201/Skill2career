@@ -56,6 +56,11 @@ from app.schemas.course import (
     LessonSchema,
     CurriculumSyncRequest,
     PaginatedCourseResponse,
+    LessonCreateRequest,
+    LessonUpdateRequest,
+    StudyMaterialUploadResponse,
+    CourseModuleCreateRequest,
+    CourseModuleUpdateRequest,
 )
 from app.schemas.job import (
     JobPostingType,

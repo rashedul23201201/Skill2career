@@ -122,6 +122,40 @@ class CourseRepository:
         return module
 
     @staticmethod
+    def get_module_by_id(db: Session, module_id: int) -> Optional[CourseModule]:
+        """Fetch module by ID with child lessons."""
+        stmt = (
+            select(CourseModule)
+            .options(selectinload(CourseModule.lessons))
+            .where(CourseModule.id == module_id)
+        )
+        return db.execute(stmt).scalar_one_or_none()
+
+    @staticmethod
+    def get_modules_by_course(db: Session, course_id: int) -> List[CourseModule]:
+        """Fetch all modules for a course ordered by order_index."""
+        stmt = (
+            select(CourseModule)
+            .options(selectinload(CourseModule.lessons))
+            .where(CourseModule.course_id == course_id)
+            .order_by(CourseModule.order_index.asc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def update_module(db: Session, module: CourseModule) -> CourseModule:
+        """Commit changes to an existing module."""
+        db.commit()
+        db.refresh(module)
+        return module
+
+    @staticmethod
+    def delete_module(db: Session, module: CourseModule) -> None:
+        """Delete a module and its cascading lessons."""
+        db.delete(module)
+        db.commit()
+
+    @staticmethod
     def add_lesson(
         db: Session,
         course_id: int,
@@ -150,6 +184,40 @@ class CourseRepository:
         db.commit()
         db.refresh(lesson)
         return lesson
+
+    @staticmethod
+    def get_lesson_by_id(db: Session, lesson_id: int) -> Optional[Lesson]:
+        """Fetch lesson by ID with course and module references."""
+        stmt = (
+            select(Lesson)
+            .options(joinedload(Lesson.course), joinedload(Lesson.module))
+            .where(Lesson.id == lesson_id)
+        )
+        return db.execute(stmt).scalar_one_or_none()
+
+    @staticmethod
+    def get_lessons_by_course(db: Session, course_id: int) -> List[Lesson]:
+        """Fetch all lessons for a course ordered by order_index."""
+        stmt = (
+            select(Lesson)
+            .options(joinedload(Lesson.module))
+            .where(Lesson.course_id == course_id)
+            .order_by(Lesson.order_index.asc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def update_lesson(db: Session, lesson: Lesson) -> Lesson:
+        """Commit changes to an existing lesson."""
+        db.commit()
+        db.refresh(lesson)
+        return lesson
+
+    @staticmethod
+    def delete_lesson(db: Session, lesson: Lesson) -> None:
+        """Delete a lesson from the database."""
+        db.delete(lesson)
+        db.commit()
 
     @staticmethod
     def sync_curriculum(db: Session, course: Course, modules_data: List[Dict[str, Any]]) -> Course:

@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Edit3,
   ShieldAlert,
+  Play,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -381,9 +382,16 @@ export const Courses = () => {
                     )}
                     <Link
                       to={`/courses/${course.id}`}
-                      className="bg-navy-950 hover:bg-navy-900 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition-all text-center"
+                      className="bg-navy-950 hover:bg-navy-900 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm transition-all text-center"
                     >
                       View Course
+                    </Link>
+                    <Link
+                      to={`/courses/${course.id}/learn`}
+                      className="inline-flex items-center space-x-1 px-3 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>Learn</span>
                     </Link>
                   </div>
                 </div>
