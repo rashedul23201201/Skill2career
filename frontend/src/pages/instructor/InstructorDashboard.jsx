@@ -387,7 +387,7 @@ export const InstructorDashboard = () => {
               variant="outline"
               size="sm"
               className="w-full text-xs font-semibold"
-              onClick={() => alert("Sprint 3 Feature: Mock Exam Sandbox is scheduled for Sprint 3.")}
+              onClick={() => navigate(ROUTES.MOCK_TESTS)}
             >
               <span>Explore Assessment Tools</span>
             </Button>

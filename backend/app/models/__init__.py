@@ -6,6 +6,7 @@ from app.models.profile import LearnerProfile, InstructorProfile, CompanyProfile
 from app.models.audit_log import AuditLog
 from app.models.course import Course, CourseModule, Lesson, CourseLevel, CourseStatus
 from app.models.job import JobPosting, JobPostingType, JobWorkMode, JobStatus, JobExperienceLevel
+from app.models.mock_test import MockTest, TestQuestion, MockTestStatus
 
 __all__ = [
     "User",
@@ -27,6 +28,9 @@ __all__ = [
     "JobWorkMode",
     "JobStatus",
     "JobExperienceLevel",
+    "MockTest",
+    "TestQuestion",
+    "MockTestStatus",
 ]
 
 
