@@ -1,7 +1,7 @@
 """Create screening_questions and candidate_evaluations tables for Candidate Screening Module (SKL-8)
 
-Revision ID: 20261009_0007
-Revises: 20261009_0006
+Revision ID: 20261009_0009
+Revises: 20261009_0008
 Create Date: 2026-10-09 02:30:00.000000
 
 """
@@ -9,8 +9,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "20261009_0007"
-down_revision: Union[str, None] = "20261009_0006"
+revision: str = "20261009_0009"
+down_revision: Union[str, None] = "20261009_0008"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
