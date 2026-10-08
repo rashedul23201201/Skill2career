@@ -22,6 +22,7 @@ import InstructorApply from "../pages/instructor/InstructorApply";
 import Jobs from "../pages/Jobs";
 import JobDetails from "../pages/JobDetails";
 import JobManagement from "../pages/JobManagement";
+import CandidateScreening from "../pages/CandidateScreening";
 import MockTests from "../pages/MockTests";
 import MockTestManagement from "../pages/MockTestManagement";
 import NotFound from "../pages/NotFound";
@@ -96,6 +97,14 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
               <JobManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.JOB_SCREENING}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.COMPANY, USER_ROLES.ADMIN]}>
+              <CandidateScreening />
             </ProtectedRoute>
           }
         />

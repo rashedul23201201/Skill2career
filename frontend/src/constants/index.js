@@ -37,6 +37,7 @@ export const ROUTES = {
   JOB_NEW: "/jobs/new",
   JOB_DETAILS: "/jobs/:id",
   JOB_MANAGE: "/jobs/:id/manage",
+  JOB_SCREENING: "/jobs/:id/screening",
   COMPANY_JOBS: "/company/jobs",
   FORUM: "/forum",
   MOCK_TESTS: "/mock-tests",
