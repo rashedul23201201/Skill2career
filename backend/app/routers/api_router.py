@@ -13,6 +13,7 @@ from app.routers.lesson import router as lesson_router
 from app.routers.job import router as job_router
 from app.routers.mock_test import router as mock_test_router
 from app.routers.attempt import router as attempt_router
+from app.routers.forum import router as forum_router
 
 api_router = APIRouter()
 
@@ -28,6 +29,7 @@ api_router.include_router(lesson_router)
 api_router.include_router(job_router)
 api_router.include_router(mock_test_router)
 api_router.include_router(attempt_router)
+api_router.include_router(forum_router)
 
 
 router = api_router
