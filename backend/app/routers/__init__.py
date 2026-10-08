@@ -10,6 +10,8 @@ from app.routers.course import router as course_router
 from app.routers.job import router as job_router
 from app.routers.mock_test import router as mock_test_router
 from app.routers.screening import router as screening_router
+from app.routers.attempt import router as attempt_router
+from app.routers.forum import router as forum_router
 from app.routers.api_router import api_router
 
 __all__ = [
@@ -23,5 +25,7 @@ __all__ = [
     "job_router",
     "mock_test_router",
     "screening_router",
+    "attempt_router",
+    "forum_router",
     "api_router",
 ]

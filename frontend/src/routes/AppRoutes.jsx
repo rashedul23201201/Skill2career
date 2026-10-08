@@ -25,6 +25,9 @@ import JobManagement from "../pages/JobManagement";
 import CandidateScreening from "../pages/CandidateScreening";
 import MockTests from "../pages/MockTests";
 import MockTestManagement from "../pages/MockTestManagement";
+import MockTestAttempt from "../pages/MockTestAttempt";
+import Forum from "../pages/Forum";
+import ForumPostDetail from "../pages/ForumPostDetail";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -116,18 +119,28 @@ export const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        {/* Sprint 2 Community Forum & Discussions Routes (SKL-14) */}
+        <Route path={ROUTES.FORUM} element={<Forum />} />
+        <Route path={ROUTES.FORUM_POST_DETAILS} element={<ForumPostDetail />} />
+        <Route path="/forum/posts/:id" element={<ForumPostDetail />} />
+        {/* Sprint 2 Assessment Mock Test Routes (SKL-56 / SKL-57) */}
+        <Route path={ROUTES.MOCK_TESTS} element={<MockTests />} />
         <Route
-          path={ROUTES.FORUM}
+          path={ROUTES.MOCK_TEST_TAKE}
           element={
-            <FeaturePlaceholder
-              title="Community Forum & Discussions"
-              sprint="Sprint 4"
-              description="Collaborative peer forum and mentorship channels for university students and career switchers."
-            />
+            <ProtectedRoute>
+              <MockTestAttempt />
+            </ProtectedRoute>
           }
         />
-        {/* Sprint 2 Assessment Mock Test Routes (SKL-56) */}
-        <Route path={ROUTES.MOCK_TESTS} element={<MockTests />} />
+        <Route
+          path="/mock-tests/:id/attempt"
+          element={
+            <ProtectedRoute>
+              <MockTestAttempt />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path={ROUTES.MOCK_TEST_NEW}
           element={

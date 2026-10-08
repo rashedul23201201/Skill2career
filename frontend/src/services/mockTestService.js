@@ -55,6 +55,42 @@ export const mockTestService = {
     const response = await api.post(`/mock-tests/${testId}/questions/sync`, { questions });
     return response.data;
   },
+
+  async startAttempt(testId) {
+    const response = await api.post(`/mock-tests/${testId}/start-attempt`);
+    return response.data;
+  },
+
+  async getMyAttemptsForTest(testId) {
+    const response = await api.get(`/mock-tests/${testId}/my-attempts`);
+    return response.data;
+  },
+
+  async getAttempt(attemptId) {
+    const response = await api.get(`/attempts/${attemptId}`);
+    return response.data;
+  },
+
+  async saveIntermediateAnswers(attemptId, { answers, marked_for_review }) {
+    const response = await api.put(`/attempts/${attemptId}/answers`, {
+      answers,
+      marked_for_review,
+    });
+    return response.data;
+  },
+
+  async submitTestAnswers(attemptId, { answers, marked_for_review } = {}) {
+    const response = await api.post(`/attempts/${attemptId}/submit-answers`, {
+      answers,
+      marked_for_review,
+    });
+    return response.data;
+  },
+
+  async getMyAttempts() {
+    const response = await api.get("/attempts");
+    return response.data;
+  },
 };
 
 export default mockTestService;

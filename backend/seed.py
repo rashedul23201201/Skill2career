@@ -18,6 +18,7 @@ from app.models.screening import (
     DealBreakerRule,
     CandidateStatus,
 )
+from app.models.forum import ForumCategory, ForumPost, ForumComment
 from app.core.security import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -984,6 +985,236 @@ def seed_database():
                 qa_job.applications_count = len(qa_candidates)
                 db.commit()
                 logger.info("Successfully seeded screening for QA & Automation Intern.")
+        # Seed Forum Categories and Sample Discussions (SKL-14)
+        logger.info("Checking forum categories and discussions...")
+        categories_data = [
+            {"name": "General Discussion", "slug": "general-discussion", "description": "Open community conversations, career guidance, and general tech chats.", "order_index": 1},
+            {"name": "Programming", "slug": "programming", "description": "Algorithms, data structures, backend, frontend, and software engineering questions.", "order_index": 2},
+            {"name": "Career & Jobs", "slug": "career-jobs", "description": "CV reviews, job search strategies, internship hunt, and industry transitions.", "order_index": 3},
+            {"name": "Interview Preparation", "slug": "interview-preparation", "description": "Technical screening, system design, mock interview questions, and HR tips.", "order_index": 4},
+            {"name": "Learning & Courses", "slug": "learning-courses", "description": "Course recommendations, study schedules, and academic exam prep.", "order_index": 5},
+        ]
+
+        cat_map = {}
+        for cdata in categories_data:
+            cat = db.execute(select(ForumCategory).where(ForumCategory.slug == cdata["slug"])).scalar_one_or_none()
+            if not cat:
+                cat = ForumCategory(
+                    name=cdata["name"],
+                    slug=cdata["slug"],
+                    description=cdata["description"],
+                    order_index=cdata["order_index"],
+                )
+                db.add(cat)
+                db.flush()
+                logger.info("Created forum category: %s", cat.name)
+            cat_map[cat.slug] = cat
+        db.commit()
+
+        # Ensure forum author users exist
+        forum_users_meta = [
+            {"email": "rashedul@skill2career.com", "first_name": "Rashedul", "last_name": "Islam", "role": UserRole.LEARNER},
+            {"email": "nayeema@skill2career.com", "first_name": "Nayeema", "last_name": "Sultana", "role": UserRole.INSTRUCTOR},
+            {"email": "absiddique@skill2career.com", "first_name": "AB", "last_name": "Siddique", "role": UserRole.LEARNER},
+            {"email": "lamyea@skill2career.com", "first_name": "Lam-Yea", "last_name": "Chowdhury", "role": UserRole.LEARNER},
+            {"email": "moktadir@skill2career.com", "first_name": "Md.", "last_name": "Moktadir", "role": UserRole.LEARNER},
+            {"email": "saif@skill2career.com", "first_name": "Saif Mehedi", "last_name": "Sami", "role": UserRole.LEARNER},
+        ]
+        user_cache = {}
+        for fu in forum_users_meta:
+            u = db.execute(select(User).where(User.email == fu["email"])).scalar_one_or_none()
+            if not u:
+                u = User(
+                    email=fu["email"],
+                    hashed_password=hash_password("Password123!"),
+                    first_name=fu["first_name"],
+                    last_name=fu["last_name"],
+                    role=fu["role"],
+                    is_verified=True,
+                    is_active=True,
+                )
+                db.add(u)
+                db.flush()
+            user_cache[fu["email"]] = u
+        db.commit()
+
+        # Seed sample forum discussions matching Forum.png
+        existing_posts_count = db.execute(select(func.count(ForumPost.id))).scalar() or 0
+        if existing_posts_count == 0:
+            posts_seed_data = [
+                {
+                    "title": "How should I prepare for a backend developer interview?",
+                    "category_slug": "interview-preparation",
+                    "author_email": "rashedul@skill2career.com",
+                    "content": "I am preparing for junior to mid-level backend developer interviews focusing on Python (FastAPI/Django) and Node.js. What core areas should I prioritize? E.g., relational databases, indexing, caching with Redis, system design, or concurrency patterns?",
+                    "likes_count": 25,
+                    "views_count": 155,
+                    "comments": [
+                        {
+                            "author_email": "instructor@skill2career.com",
+                            "is_instructor_reply": True,
+                            "content": "Focus heavily on relational database fundamentals: 3NF normalization, index internals (B-Tree vs Hash), ACID transactions, and query plan analysis with EXPLAIN. Interviewers love asking how you would debug a slow query.",
+                        },
+                        {
+                            "author_email": "moktadir@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Understand caching strategies (Cache-Aside, Write-Through) with Redis, especially cache invalidation, cache stampede, and cache penetration.",
+                        },
+                        {
+                            "author_email": "learner@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Be prepared to explain REST vs gRPC vs WebSockets and when to pick each for high-throughput microservices.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Best resources for learning Data Structures and Algorithms?",
+                    "category_slug": "programming",
+                    "author_email": "absiddique@skill2career.com",
+                    "content": "Looking for high-yield resources to master trees, graphs, dynamic programming, and heaps. Any recommended platforms, curated sheets, or books that explain problem intuition clearly?",
+                    "likes_count": 18,
+                    "views_count": 210,
+                    "comments": [
+                        {
+                            "author_email": "nayeema@skill2career.com",
+                            "is_instructor_reply": True,
+                            "content": "I strongly recommend starting with NeetCode 150 alongside 'Grokking Algorithms' for visual intuition. Focus on pattern recognition: two pointers, sliding window, topological sort, and BFS/DFS before jumping directly into complex dynamic programming.",
+                        },
+                        {
+                            "author_email": "rashedul@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Striver's SDE sheet is also phenomenal for structured revision before technical rounds. It categorizes questions by difficulty and topic.",
+                        },
+                        {
+                            "author_email": "absiddique@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Thanks for the suggestions! I found practicing visualization on Visualgo.net super helpful before coding.",
+                        },
+                    ],
+                },
+                {
+                    "title": "How can I improve my CV for internships?",
+                    "category_slug": "career-jobs",
+                    "author_email": "lamyea@skill2career.com",
+                    "content": "As an undergraduate seeking summer internships, what key sections do tech recruiters look for first? Should I put projects above education? How should I quantify impact if I don't have prior commercial experience?",
+                    "likes_count": 32,
+                    "views_count": 190,
+                    "comments": [
+                        {
+                            "author_email": "company@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "As a technical recruiter, the #1 thing I look for on student CVs is deployed projects with live demo links and clean GitHub READMEs. Keep your CV strictly 1 page, put your Projects and Tech Stack right below your Education, and avoid generic skill rating bars.",
+                        },
+                        {
+                            "author_email": "instructor@skill2career.com",
+                            "is_instructor_reply": True,
+                            "content": "Quantify your bullet points with metrics wherever possible: for example, 'Built an automated grading engine handling 500+ submissions with 99.8% uptime' rather than just 'Worked on grading engine'. Impact metrics immediately catch a hiring manager's eye.",
+                        },
+                        {
+                            "author_email": "saif@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Ensure your LinkedIn profile and GitHub are hyperlinked in the contact header. Also, tailor the keywords to match the specific internship description (e.g., React, FastAPI, Docker, SQL).",
+                        },
+                        {
+                            "author_email": "moktadir@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Include hackathon participations or academic research if relevant. It demonstrates proactive problem solving outside of standard coursework.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Tips for mastering Object-Oriented Programming in Java for academic exams",
+                    "category_slug": "learning-courses",
+                    "author_email": "moktadir@skill2career.com",
+                    "content": "Our university semester final includes in-depth design problems using OOP principles (encapsulation, polymorphism, abstract classes vs interfaces) and SOLID design patterns. Any tips on tackling coding exam questions efficiently?",
+                    "likes_count": 22,
+                    "views_count": 120,
+                    "comments": [
+                        {
+                            "author_email": "instructor@skill2career.com",
+                            "is_instructor_reply": True,
+                            "content": "Be ready to write clean code explaining polymorphism, abstract classes vs interfaces, and constructor chaining by hand without an IDE. Professors often test edge cases in method overriding vs overloading and Java 8 default methods.",
+                        },
+                        {
+                            "author_email": "absiddique@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Make sure you understand the SOLID principles with concrete code examples, especially Liskov Substitution Principle and Dependency Inversion Principle.",
+                        },
+                        {
+                            "author_email": "learner@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Practicing previous years' university question papers and drawing UML class diagrams helped me score top marks in our semester final.",
+                        },
+                    ],
+                },
+                {
+                    "title": "Networking and software engineering job prospects in Dhaka for fresh graduates",
+                    "category_slug": "general-discussion",
+                    "author_email": "saif@skill2career.com",
+                    "content": "Let's share insights on local tech companies hiring fresh graduates in Dhaka, standard salary ranges, work culture, and how participating in local meetups, open-source communities, and hackathons helped you land opportunities.",
+                    "likes_count": 45,
+                    "views_count": 320,
+                    "comments": [
+                        {
+                            "author_email": "company@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Software companies in Dhaka (Brain Station 23, Therap, Enosis, Selise, Kona SL, Kaz Software) are actively hiring fresh graduates. What stands out most during interviews is problem-solving ability, computer science fundamentals (OS, DBMS, OOP), and humility to learn.",
+                        },
+                        {
+                            "author_email": "lamyea@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Attending local Dhaka dev meetups (Python Dhaka, React Bangladesh, DevOps Days) helped me connect directly with tech leads and obtain referral interviews.",
+                        },
+                        {
+                            "author_email": "saif@skill2career.com",
+                            "is_instructor_reply": False,
+                            "content": "Junior developer salary ranges typically span BDT 35k to 70k depending on the company tier. Keep polishing DSA and build full-stack portfolio applications.",
+                        },
+                    ],
+                },
+            ]
+
+            for p_seed in posts_seed_data:
+                author_user = user_cache.get(p_seed["author_email"])
+                cat_obj = cat_map.get(p_seed["category_slug"])
+                if not author_user or not cat_obj:
+                    continue
+
+                post = ForumPost(
+                    category_id=cat_obj.id,
+                    author_id=author_user.id,
+                    title=p_seed["title"],
+                    content=p_seed["content"],
+                    views_count=p_seed["views_count"],
+                    replies_count=len(p_seed.get("comments", [])),
+                    has_instructor_reply=any(c.get("is_instructor_reply") for c in p_seed.get("comments", [])),
+                    instructor_reply_name=next(
+                        (
+                            f"{user_cache[c['author_email']].first_name} {user_cache[c['author_email']].last_name}".strip()
+                            for c in p_seed.get("comments", [])
+                            if c.get("is_instructor_reply") and c["author_email"] in user_cache
+                        ),
+                        None,
+                    ),
+                )
+                db.add(post)
+                db.flush()
+
+                if "comments" in p_seed:
+                    for c_seed in p_seed["comments"]:
+                        c_author = user_cache.get(c_seed["author_email"])
+                        if c_author:
+                            comment = ForumComment(
+                                post_id=post.id,
+                                author_id=c_author.id,
+                                content=c_seed["content"],
+                                is_instructor_reply=c_seed["is_instructor_reply"],
+                                likes_count=5,
+                            )
+                            db.add(comment)
+
+            db.commit()
+            logger.info("Successfully seeded %d sample forum discussions.", len(posts_seed_data))
 
     except Exception as e:
         db.rollback()
