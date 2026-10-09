@@ -10,6 +10,7 @@ from app.models.mock_test import MockTest, TestQuestion, MockTestStatus, TestAtt
 from app.models.forum import ForumCategory, ForumPost, ForumComment, ForumLike, ForumReport
 from app.models.screening import ScreeningQuestion, CandidateEvaluation, QuestionType, DealBreakerRule, CandidateStatus
 from app.models.enrollment import CourseEnrollment, LessonProgress, EnrollmentStatus
+from app.models.application import JobApplication, ApplicationStatus
 
 __all__ = [
     "User",
@@ -49,6 +50,8 @@ __all__ = [
     "QuestionType",
     "DealBreakerRule",
     "CandidateStatus",
+    "JobApplication",
+    "ApplicationStatus",
 ]
 
 

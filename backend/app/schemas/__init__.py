@@ -124,6 +124,13 @@ from app.schemas.enrollment import (
     EnrolledCourseItem,
     EnrolledCoursesListResponse,
 )
+from app.schemas.application import (
+    ApplicationCreateRequest,
+    ApplicationStatusUpdateRequest,
+    JobApplicationResponse,
+    PaginatedApplicationResponse,
+    ApplicationCheckResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -223,4 +230,9 @@ __all__ = [
     "CourseProgressResponse",
     "EnrolledCourseItem",
     "EnrolledCoursesListResponse",
+    "ApplicationCreateRequest",
+    "ApplicationStatusUpdateRequest",
+    "JobApplicationResponse",
+    "PaginatedApplicationResponse",
+    "ApplicationCheckResponse",
 ]

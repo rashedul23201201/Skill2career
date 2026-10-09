@@ -56,5 +56,7 @@ export const ROUTES = {
   INSTRUCTOR_DASHBOARD: "/instructor/dashboard",
   INSTRUCTOR_PROFILE: "/instructor/profile",
   INSTRUCTOR_APPLY: "/instructor/apply",
+  LEARNER_APPLICATIONS: "/learner/applications",
+  APPLICATIONS: "/applications",
 };
 

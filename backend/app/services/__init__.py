@@ -10,6 +10,7 @@ from app.services.job_service import JobService
 from app.services.mock_test_service import MockTestService
 from app.services.screening_service import ScreeningService
 from app.services.forum_service import ForumService
+from app.services.application_service import ApplicationService
 
 __all__ = [
     "AuthService",
@@ -22,4 +23,5 @@ __all__ = [
     "MockTestService",
     "ScreeningService",
     "ForumService",
+    "ApplicationService",
 ]
