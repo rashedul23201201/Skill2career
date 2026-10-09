@@ -16,6 +16,8 @@ import {
   AlertCircle,
   X,
   BookOpen,
+  BarChart3,
+  CheckCircle2,
 } from "lucide-react";
 
 export const MockTests = () => {
@@ -37,10 +39,30 @@ export const MockTests = () => {
   const [activeModalTest, setActiveModalTest] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
+  const [activeTab, setActiveTab] = useState("catalog");
+  const [historyList, setHistoryList] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+
   const categories = ["All", "Programming", "Database", "Web Development", "Other"];
 
   const canManage =
     user?.role === USER_ROLES.INSTRUCTOR || user?.role === USER_ROLES.ADMIN;
+
+  const fetchHistory = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoadingHistory(true);
+      setHistoryError(null);
+      const res = await mockTestService.getMyTestHistory();
+      setHistoryList(res.data || []);
+    } catch (err) {
+      console.error("Failed to load test history:", err);
+      setHistoryError("Unable to load assessment history.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [user]);
 
   const fetchMockTests = useCallback(async () => {
     try {
@@ -153,40 +175,72 @@ export const MockTests = () => {
           )}
         </div>
 
-        {/* Search and Category Filters */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Search bar */}
-          <form onSubmit={handleSearchSubmit} className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search tests..."
-              className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy-900 focus:border-transparent text-navy-950 placeholder-slate-400 shadow-sm"
-            />
-          </form>
-
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {categories.map((cat) => {
-              const isActive = categoryFilter === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => handleCategorySelect(cat)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                    isActive
-                      ? "bg-navy-950 text-white shadow-sm"
-                      : "bg-white text-slate-600 hover:text-navy-950 hover:bg-slate-50 border border-slate-200"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
+        {/* Navigation Tabs */}
+        {user && (
+          <div className="flex items-center space-x-3 border-b border-slate-200">
+            <button
+              onClick={() => setActiveTab("catalog")}
+              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all ${
+                activeTab === "catalog"
+                  ? "border-navy-950 text-navy-950"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Assessment Catalog
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("history");
+                fetchHistory();
+              }}
+              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all flex items-center space-x-2 ${
+                activeTab === "history"
+                  ? "border-navy-950 text-navy-950"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>My Test Results & History</span>
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* Search and Category Filters */}
+        {activeTab === "catalog" && (
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            {/* Search bar */}
+            <form onSubmit={handleSearchSubmit} className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search tests..."
+                className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy-900 focus:border-transparent text-navy-950 placeholder-slate-400 shadow-sm"
+              />
+            </form>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              {categories.map((cat) => {
+                const isActive = categoryFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => handleCategorySelect(cat)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                      isActive
+                        ? "bg-navy-950 text-white shadow-sm"
+                        : "bg-white text-slate-600 hover:text-navy-950 hover:bg-slate-50 border border-slate-200"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (
@@ -196,156 +250,277 @@ export const MockTests = () => {
           </div>
         )}
 
-        {/* Loading State */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm animate-pulse space-y-4"
-              >
-                <div className="w-24 h-6 bg-slate-100 rounded-md"></div>
-                <div className="w-3/4 h-6 bg-slate-100 rounded-md"></div>
-                <div className="w-full h-12 bg-slate-100 rounded-md"></div>
-                <div className="flex justify-between items-center pt-2">
-                  <div className="w-40 h-4 bg-slate-100 rounded-md"></div>
-                  <div className="w-24 h-8 bg-slate-100 rounded-md"></div>
-                </div>
+        {activeTab === "catalog" && (
+          <>
+            {/* Loading State */}
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm animate-pulse space-y-4"
+                  >
+                    <div className="w-24 h-6 bg-slate-100 rounded-md"></div>
+                    <div className="w-3/4 h-6 bg-slate-100 rounded-md"></div>
+                    <div className="w-full h-12 bg-slate-100 rounded-md"></div>
+                    <div className="flex justify-between items-center pt-2">
+                      <div className="w-40 h-4 bg-slate-100 rounded-md"></div>
+                      <div className="w-24 h-8 bg-slate-100 rounded-md"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : tests.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center max-w-md mx-auto space-y-4">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-navy-950 font-heading">
-              No mock tests found
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              We couldn't find any assessments matching your current filter criteria.
-            </p>
-            {categoryFilter !== "All" && (
-              <button
-                onClick={() => handleCategorySelect("All")}
-                className="text-xs font-semibold text-blue-600 hover:underline"
-              >
-                Reset filters
-              </button>
-            )}
-          </div>
-        ) : (
-          /* Mock Tests Grid (2 Columns) */
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {tests.map((test) => {
-              const isOwner = user && (test.instructor_id === user.id || user.role === USER_ROLES.ADMIN);
-              return (
-                <div
-                  key={test.id}
-                  className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between space-y-6"
-                >
-                  <div className="space-y-3">
-                    {/* Top Row: Category Badge & Author Actions */}
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${getCategoryBadgeClass(
-                          test.category
-                        )}`}
-                      >
-                        {test.category}
-                      </span>
-
-                      {isOwner && (
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => navigate(ROUTES.MOCK_TEST_MANAGE.replace(":id", test.id))}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit Test"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteTest(test.id, e)}
-                            disabled={deletingId === test.id}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Test"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Test Title */}
-                    <h3 className="text-xl font-bold text-navy-950 font-heading leading-snug">
-                      {test.title}
-                    </h3>
-
-                    {/* Test Description */}
-                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed line-clamp-2">
-                      {test.description || "Practice standard questions for technical assessments."}
-                    </p>
-                  </div>
-
-                  {/* Bottom Meta & Action */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-50">
-                    <div className="space-y-1.5 text-xs text-slate-500">
-                      <div className="flex items-center space-x-1.5">
-                        <HelpCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span>
-                          {test.total_questions} Questions · {test.duration_minutes} Minutes
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <CheckSquare className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span>Passing Score: {test.passing_score}%</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setActiveModalTest(test)}
-                      className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all self-end sm:self-auto"
-                    >
-                      <span>Start Test</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
+            ) : tests.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center max-w-md mx-auto space-y-4">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                  <BookOpen className="w-6 h-6" />
                 </div>
-              );
-            })}
-          </div>
+                <h3 className="text-lg font-bold text-navy-950 font-heading">
+                  No mock tests found
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  We couldn't find any assessments matching your current filter criteria.
+                </p>
+                {categoryFilter !== "All" && (
+                  <button
+                    onClick={() => handleCategorySelect("All")}
+                    className="text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    Reset filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* Mock Tests Grid (2 Columns) */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {tests.map((test) => {
+                  const isOwner = user && (test.instructor_id === user.id || user.role === USER_ROLES.ADMIN);
+                  return (
+                    <div
+                      key={test.id}
+                      className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between space-y-6"
+                    >
+                      <div className="space-y-3">
+                        {/* Top Row: Category Badge & Author Actions */}
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${getCategoryBadgeClass(
+                              test.category
+                            )}`}
+                          >
+                            {test.category}
+                          </span>
+
+                          {isOwner && (
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => navigate(ROUTES.MOCK_TEST_MANAGE.replace(":id", test.id))}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit Test"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteTest(test.id, e)}
+                                disabled={deletingId === test.id}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Test"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Test Title */}
+                        <h3 className="text-xl font-bold text-navy-950 font-heading leading-snug">
+                          {test.title}
+                        </h3>
+
+                        {/* Test Description */}
+                        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed line-clamp-2">
+                          {test.description || "Practice standard questions for technical assessments."}
+                        </p>
+                      </div>
+
+                      {/* Bottom Meta & Action */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-50">
+                        <div className="space-y-1.5 text-xs text-slate-500">
+                          <div className="flex items-center space-x-1.5">
+                            <HelpCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span>
+                              {test.total_questions} Questions · {test.duration_minutes} Minutes
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1.5">
+                            <CheckSquare className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                            <span>Passing Score: {test.passing_score}%</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setActiveModalTest(test)}
+                          className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all self-end sm:self-auto"
+                        >
+                          <span>Start Test</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-end space-x-2 pt-4">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-navy-950 disabled:opacity-40 disabled:hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pNum) => (
+                  <button
+                    key={pNum}
+                    onClick={() => setPage(pNum)}
+                    className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
+                      page === pNum
+                        ? "bg-navy-950 text-white"
+                        : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {pNum}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-navy-950 disabled:opacity-40 disabled:hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-end space-x-2 pt-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-navy-950 disabled:opacity-40 disabled:hover:text-slate-600 rounded-lg hover:bg-slate-100"
-            >
-              Previous
-            </button>
-            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pNum) => (
-              <button
-                key={pNum}
-                onClick={() => setPage(pNum)}
-                className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
-                  page === pNum
-                    ? "bg-navy-950 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {pNum}
-              </button>
-            ))}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-navy-950 disabled:opacity-40 disabled:hover:text-slate-600 rounded-lg hover:bg-slate-100"
-            >
-              Next
-            </button>
+        {/* Assessment History & Results View */}
+        {activeTab === "history" && (
+          <div className="space-y-6">
+            {loadingHistory ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm animate-pulse space-y-4"
+                  >
+                    <div className="w-32 h-6 bg-slate-100 rounded-md" />
+                    <div className="w-3/4 h-6 bg-slate-100 rounded-md" />
+                    <div className="w-full h-12 bg-slate-100 rounded-md" />
+                  </div>
+                ))}
+              </div>
+            ) : historyError ? (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500" />
+                <span>{historyError}</span>
+              </div>
+            ) : historyList.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center max-w-md mx-auto space-y-4">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-navy-950 font-heading">
+                  No Completed Assessments Yet
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Start an assessment from the catalog to see your test scores, topic breakdowns, and percentile rankings.
+                </p>
+                <button
+                  onClick={() => setActiveTab("catalog")}
+                  className="px-4 py-2 bg-navy-950 text-white rounded-xl text-xs font-semibold"
+                >
+                  Browse Catalog
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {historyList.map((item) => (
+                  <div
+                    key={item.attempt_id}
+                    className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between space-y-5"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold ${getCategoryBadgeClass(
+                            item.category
+                          )}`}
+                        >
+                          {item.category || "Assessment"}
+                        </span>
+
+                        {item.is_passed ? (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{item.score}/{item.total_marks} PASSED</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{item.score}/{item.total_marks} NEEDS IMPROVEMENT</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-xl font-bold text-navy-950 font-heading leading-snug">
+                        {item.test_title}
+                      </h3>
+
+                      <p className="text-xs text-slate-400">
+                        Completed on {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : "Recently"}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 rounded-xl p-3 border border-slate-100 text-center text-xs">
+                      <div>
+                        <span className="text-slate-400 font-medium">Score</span>
+                        <p className="text-sm font-bold text-navy-950 mt-0.5">
+                          {Math.round(item.percentage)}%
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 font-medium">Time</span>
+                        <p className="text-sm font-bold text-navy-950 mt-0.5">
+                          {Math.floor((item.time_taken_seconds || 0) / 60)}m {(item.time_taken_seconds || 0) % 60}s
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 font-medium">Percentile</span>
+                        <p className="text-sm font-bold text-blue-600 mt-0.5">
+                          {item.percentile_rank ? `Top ${item.percentile_rank}%` : "Evaluated"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                      <button
+                        onClick={() =>
+                          navigate(ROUTES.MOCK_TEST_RESULT.replace(":id", item.attempt_id))
+                        }
+                        className="inline-flex items-center space-x-1.5 px-4 py-2 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm"
+                      >
+                        <span>View Performance Analysis</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

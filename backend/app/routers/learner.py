@@ -6,15 +6,19 @@ from app.database.session import get_db
 from app.dependencies.auth import require_role
 from app.models.user import User, UserRole
 from app.schemas.auth import ApiResponse
+from typing import List
 from app.schemas.learner import (
     LearnerProfileUpdateRequest,
     LearnerProfileResponse,
     ResumeUploadResponse,
 )
+from app.schemas.mock_test import TestResultResponse
 from app.services.learner_service import LearnerService
+from app.services.mock_test_service import MockTestService
 
 router = APIRouter(prefix="/learners", tags=["Learner Profile Management"])
 learner_service = LearnerService()
+mock_test_service = MockTestService()
 
 
 @router.get(
@@ -122,3 +126,22 @@ def delete_resume(
         message="Resume removed successfully",
         data=updated_profile,
     )
+
+
+@router.get(
+    "/test-history",
+    response_model=ApiResponse[List[TestResultResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get authenticated learner test history with performance analysis (SKL-58)",
+)
+def get_learner_test_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[List[TestResultResponse]]:
+    history = mock_test_service.get_learner_test_history(db=db, current_user=current_user)
+    return ApiResponse[List[TestResultResponse]](
+        success=True,
+        message="Learner test history retrieved successfully",
+        data=history,
+    )
+

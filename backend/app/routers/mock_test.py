@@ -19,6 +19,7 @@ from app.schemas.mock_test import (
     PaginatedMockTestResponse,
     TestAttemptStartResponse,
     TestAttemptResponse,
+    TestResultResponse,
 )
 from app.services.mock_test_service import MockTestService
 
@@ -306,4 +307,26 @@ def get_my_attempts_for_test(
         message="Test attempts retrieved successfully",
         data=attempts,
     )
+
+
+@router.get(
+    "/{test_id}/results",
+    response_model=ApiResponse[List[TestResultResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get learner results and performance analysis for a mock test (Instructor view) (SKL-58)",
+)
+def get_mock_test_results(
+    test_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[List[TestResultResponse]]:
+    results = mock_test_service.get_test_results_for_instructor(
+        db=db, test_id=test_id, current_user=current_user
+    )
+    return ApiResponse[List[TestResultResponse]](
+        success=True,
+        message="Mock test results retrieved successfully",
+        data=results,
+    )
+
 

@@ -571,12 +571,23 @@ export const MockTestAttempt = () => {
               Passing threshold for this assessment is {resultData.passing_score}%.
             </p>
 
-            <div className="flex items-center justify-center space-x-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <button
                 onClick={() => navigate(ROUTES.MOCK_TESTS)}
-                className="px-5 py-2.5 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm"
+                className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs sm:text-sm font-semibold transition-all"
               >
-                Return to Mock Tests
+                Return to Catalog
+              </button>
+              <button
+                onClick={() =>
+                  navigate(
+                    ROUTES.MOCK_TEST_RESULT.replace(":id", attempt?.id || resultData?.attempt_id)
+                  )
+                }
+                className="w-full sm:w-auto px-5 py-2.5 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center justify-center space-x-1.5"
+              >
+                <span>View Performance Analysis</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>

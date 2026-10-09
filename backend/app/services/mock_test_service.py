@@ -15,6 +15,7 @@ from app.models.mock_test import (
     MockTestStatus,
     TestAttempt,
     TestAttemptStatus,
+    TestResult,
 )
 from app.repositories.mock_test_repository import MockTestRepository
 from app.repositories.audit_log_repository import AuditLogRepository
@@ -31,6 +32,10 @@ from app.schemas.mock_test import (
     TestAttemptSaveAnswersRequest,
     TestAttemptSubmitRequest,
     TestAttemptResponse,
+    TestResultResponse,
+    TopicBreakdownItem,
+    DifficultyAnalysisItem,
+    QuestionReviewItem,
 )
 
 
@@ -85,6 +90,8 @@ class MockTestService:
             marks=q.marks,
             explanation=None if hide_answers else q.explanation,
             order_index=q.order_index,
+            topic=q.topic,
+            difficulty=q.difficulty,
             created_at=q.created_at,
             updated_at=q.updated_at,
         )
@@ -313,6 +320,8 @@ class MockTestService:
             marks=request.marks,
             explanation=request.explanation.strip() if request.explanation else None,
             order_index=request.order_index,
+            topic=request.topic.strip() if request.topic else None,
+            difficulty=request.difficulty.strip() if request.difficulty else None,
         )
         created = self.mock_test_repo.create_question(db, question)
 
@@ -371,6 +380,10 @@ class MockTestService:
             question.explanation = request.explanation.strip() if request.explanation else None
         if request.order_index is not None:
             question.order_index = request.order_index
+        if request.topic is not None:
+            question.topic = request.topic.strip() if request.topic else None
+        if request.difficulty is not None:
+            question.difficulty = request.difficulty.strip() if request.difficulty else None
 
         updated = self.mock_test_repo.update_question(db, question)
         return self._to_question_response(updated)
@@ -600,6 +613,8 @@ class MockTestService:
 
         updated = self.mock_test_repo.update_attempt(db, attempt)
 
+        self._evaluate_and_persist_result(db, updated)
+
         self.audit_repo.create(
             db=db,
             action="MOCK_TEST_ATTEMPT_SUBMIT",
@@ -617,6 +632,273 @@ class MockTestService:
         )
 
         return self._to_attempt_response(updated)
+
+    def _infer_topic(self, q: TestQuestion, default_category: str) -> str:
+        if q.topic and q.topic.strip():
+            return q.topic.strip()
+        text = (q.question_text or "").lower()
+        if any(w in text for w in ["bst", "binary search tree", "balanced binary", "avl", "red-black"]):
+            return "Binary Search Trees"
+        if any(w in text for w in ["graph", "dfs", "bfs", "dijkstra", "vertex", "vertices", "edge"]):
+            return "Graph Algorithms"
+        if any(w in text for w in ["dynamic programming", "memoization", "bottom-up", "knapsack", "subsequence"]):
+            return "Dynamic Programming"
+        if any(w in text for w in ["sort", "mergesort", "quicksort", "bubble sort", "heap sort"]):
+            return "Sorting"
+        if any(w in text for w in ["stack", "queue", "lifo", "fifo"]):
+            return "Stacks & Queues"
+        if any(w in text for w in ["hash", "dict", "map", "collision"]):
+            return "Hash Tables"
+        if any(w in text for w in ["sql", "join", "group by", "having", "normal form", "1nf", "2nf", "3nf", "acid", "transaction"]):
+            return "Relational Database & SQL"
+        if any(w in text for w in ["react", "component", "hook", "state", "useeffect", "usestate"]):
+            return "React & State Management"
+        if any(w in text for w in ["css", "flexbox", "grid", "display: flex"]):
+            return "CSS & Layout"
+        if any(w in text for w in ["html", "semantic", "<header>", "<article>"]):
+            return "Semantic HTML5"
+        if any(w in text for w in ["oop", "encapsulation", "inheritance", "polymorphism", "abstraction"]):
+            return "OOP Principles"
+        if any(w in text for w in ["solid", "singleton", "factory", "observer", "pattern"]):
+            return "Design Patterns"
+        return default_category or "General Concepts"
+
+    def _infer_difficulty(self, q: TestQuestion) -> str:
+        if q.difficulty and q.difficulty.strip():
+            return q.difficulty.strip().title()
+        if q.marks <= 1:
+            return "Easy"
+        if q.marks == 2:
+            return "Medium"
+        return "Hard"
+
+    def _evaluate_and_persist_result(self, db: Session, attempt: TestAttempt) -> TestResult:
+        existing = self.mock_test_repo.get_result_by_attempt_id(db, attempt.id)
+        if existing:
+            return existing
+
+        questions = self.mock_test_repo.get_questions_by_test_id(db, attempt.test_id)
+        answers = attempt.answers or {}
+        test = attempt.test
+
+        total_score = 0.0
+        total_marks = 0
+        correct_questions_count = 0
+        answered_questions_count = 0
+        question_reviews = []
+
+        topics_data = {}
+        difficulties_data = {
+            "Easy": {"correct_count": 0, "total_count": 0, "correct_marks": 0.0, "total_marks": 0.0},
+            "Medium": {"correct_count": 0, "total_count": 0, "correct_marks": 0.0, "total_marks": 0.0},
+            "Hard": {"correct_count": 0, "total_count": 0, "correct_marks": 0.0, "total_marks": 0.0},
+        }
+
+        for q in questions:
+            total_marks += q.marks
+            qid_str = str(q.id)
+            selected_option = answers.get(qid_str) or answers.get(q.id)
+            if selected_option is not None and str(selected_option).strip() != "":
+                answered_questions_count += 1
+
+            is_correct = False
+            if (
+                selected_option
+                and str(selected_option).strip().upper() == str(q.correct_option).strip().upper()
+            ):
+                is_correct = True
+                correct_questions_count += 1
+                total_score += q.marks
+
+            topic = self._infer_topic(q, test.category if test else "Programming")
+            difficulty = self._infer_difficulty(q)
+
+            if topic not in topics_data:
+                topics_data[topic] = {"correct_count": 0, "total_count": 0, "correct_marks": 0.0, "total_marks": 0.0}
+            topics_data[topic]["total_count"] += 1
+            topics_data[topic]["total_marks"] += q.marks
+            if is_correct:
+                topics_data[topic]["correct_count"] += 1
+                topics_data[topic]["correct_marks"] += q.marks
+
+            if difficulty not in difficulties_data:
+                difficulties_data[difficulty] = {"correct_count": 0, "total_count": 0, "correct_marks": 0.0, "total_marks": 0.0}
+            difficulties_data[difficulty]["total_count"] += 1
+            difficulties_data[difficulty]["total_marks"] += q.marks
+            if is_correct:
+                difficulties_data[difficulty]["correct_count"] += 1
+                difficulties_data[difficulty]["correct_marks"] += q.marks
+
+            question_reviews.append({
+                "question_id": q.id,
+                "order_index": q.order_index,
+                "question_text": q.question_text,
+                "options": q.options,
+                "selected_option": selected_option,
+                "correct_option": q.correct_option,
+                "is_correct": is_correct,
+                "marks": q.marks,
+                "marks_obtained": q.marks if is_correct else 0.0,
+                "explanation": q.explanation,
+                "topic": topic,
+                "difficulty": difficulty,
+            })
+
+        percentage = round((total_score / total_marks * 100), 2) if total_marks > 0 else 0.0
+        accuracy = (
+            round((correct_questions_count / answered_questions_count * 100), 1)
+            if answered_questions_count > 0
+            else (round((correct_questions_count / len(questions) * 100), 1) if questions else 0.0)
+        )
+        is_passed = percentage >= (test.passing_score if test else 50)
+
+        topic_breakdown = []
+        for t_name, t_val in topics_data.items():
+            t_pct = round((t_val["correct_marks"] / t_val["total_marks"] * 100), 1) if t_val["total_marks"] > 0 else 0.0
+            topic_breakdown.append({
+                "topic": t_name,
+                "percentage": t_pct,
+                "correct_count": t_val["correct_count"],
+                "total_count": t_val["total_count"],
+                "correct_marks": t_val["correct_marks"],
+                "total_marks": t_val["total_marks"],
+            })
+
+        difficulty_analysis = []
+        for d_name in ["Easy", "Medium", "Hard"]:
+            if d_name in difficulties_data and difficulties_data[d_name]["total_count"] > 0:
+                d_val = difficulties_data[d_name]
+                d_pct = round((d_val["correct_count"] / d_val["total_count"] * 100), 1)
+                difficulty_analysis.append({
+                    "difficulty": d_name,
+                    "correct_count": d_val["correct_count"],
+                    "total_count": d_val["total_count"],
+                    "percentage": d_pct,
+                    "correct_marks": d_val["correct_marks"],
+                    "total_marks": d_val["total_marks"],
+                })
+
+        submitted_attempts = self.mock_test_repo.get_submitted_attempts_by_test(db, attempt.test_id)
+        total_sub = max(1, len(submitted_attempts))
+        strictly_lower = sum(1 for a in submitted_attempts if a.score < total_score)
+        percentile_score = round(((strictly_lower + 0.5) / total_sub) * 100, 1)
+        top_pct = max(1, min(99, 100 - int(percentile_score)))
+        percentile_label = f"Top {top_pct}% Candidate"
+
+        result = TestResult(
+            attempt_id=attempt.id,
+            total_score=total_score,
+            total_marks=total_marks,
+            percentage=percentage,
+            accuracy=accuracy,
+            is_passed=is_passed,
+            time_taken_seconds=attempt.time_taken_seconds,
+            percentile_score=percentile_score,
+            percentile_label=percentile_label,
+            topic_breakdown=topic_breakdown,
+            difficulty_analysis=difficulty_analysis,
+            question_reviews=question_reviews,
+        )
+        return self.mock_test_repo.create_result(db, result)
+
+    def _to_result_response(self, result: TestResult) -> TestResultResponse:
+        attempt = result.attempt
+        test = attempt.test if attempt else None
+        learner = attempt.learner if attempt else None
+
+        learner_name = "Learner"
+        if learner:
+            learner_name = f"{learner.first_name} {learner.last_name}".strip()
+
+        return TestResultResponse(
+            id=result.id,
+            attempt_id=result.attempt_id,
+            test_id=attempt.test_id if attempt else 0,
+            test_title=test.title if test else "Assessment",
+            category=test.category if test else "Programming",
+            duration_minutes=test.duration_minutes if test else 60,
+            passing_score=test.passing_score if test else 50,
+            learner_id=attempt.learner_id if attempt else 0,
+            learner_name=learner_name,
+            total_score=result.total_score,
+            total_marks=result.total_marks,
+            percentage=result.percentage,
+            accuracy=result.accuracy,
+            is_passed=result.is_passed,
+            time_taken_seconds=result.time_taken_seconds,
+            percentile_score=result.percentile_score,
+            percentile_label=result.percentile_label,
+            topic_breakdown=[TopicBreakdownItem(**t) for t in (result.topic_breakdown or [])],
+            difficulty_analysis=[DifficultyAnalysisItem(**d) for d in (result.difficulty_analysis or [])],
+            question_reviews=[QuestionReviewItem(**q) for q in (result.question_reviews or [])],
+            completed_at=attempt.submitted_at if attempt else result.created_at,
+            created_at=result.created_at,
+        )
+
+    def get_attempt_result(
+        self, db: Session, attempt_id: int, current_user: User
+    ) -> TestResultResponse:
+        attempt = self.mock_test_repo.get_attempt_by_id(db, attempt_id)
+        if not attempt:
+            raise NotFoundException("Test attempt not found")
+
+        is_owner = attempt.learner_id == current_user.id
+        is_instructor = (
+            current_user.role == UserRole.INSTRUCTOR
+            and attempt.test
+            and attempt.test.instructor_id == current_user.id
+        )
+        is_admin = current_user.role == UserRole.ADMIN
+
+        if not (is_owner or is_instructor or is_admin):
+            raise ForbiddenException("You do not have permission to view this test result")
+
+        if attempt.status == TestAttemptStatus.ACTIVE.value:
+            now = datetime.now(timezone.utc)
+            duration_limit = attempt.test.duration_minutes * 60
+            attempt_started = _ensure_utc(attempt.started_at)
+            elapsed = (now - attempt_started).total_seconds()
+            if elapsed >= duration_limit:
+                self.submit_attempt_answers(
+                    db=db,
+                    attempt_id=attempt.id,
+                    current_user=current_user,
+                    request=None,
+                    is_auto_expired=True,
+                )
+                attempt = self.mock_test_repo.get_attempt_by_id(db, attempt_id)
+            else:
+                raise BadRequestException("Assessment is still in progress. Please submit the test before viewing results.")
+
+        result = self.mock_test_repo.get_result_by_attempt_id(db, attempt.id)
+        if not result:
+            result = self._evaluate_and_persist_result(db, attempt)
+
+        return self._to_result_response(result)
+
+    def get_learner_test_history(
+        self, db: Session, current_user: User
+    ) -> List[TestResultResponse]:
+        attempts = self.mock_test_repo.get_attempts_by_learner(db, learner_id=current_user.id)
+        results = []
+        for a in attempts:
+            if a.status in [TestAttemptStatus.SUBMITTED.value, TestAttemptStatus.EXPIRED.value]:
+                res = self.mock_test_repo.get_result_by_attempt_id(db, a.id)
+                if not res:
+                    res = self._evaluate_and_persist_result(db, a)
+                results.append(self._to_result_response(res))
+        return results
+
+    def get_test_results_for_instructor(
+        self, db: Session, test_id: int, current_user: User
+    ) -> List[TestResultResponse]:
+        test = self.mock_test_repo.get_by_id(db, test_id)
+        if not test:
+            raise NotFoundException("Mock test not found")
+        self._verify_management_access(test, current_user)
+
+        results = self.mock_test_repo.get_results_by_test_id(db, test_id)
+        return [self._to_result_response(r) for r in results]
 
     def get_learner_attempts(
         self, db: Session, current_user: User, test_id: Optional[int] = None

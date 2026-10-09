@@ -61,6 +61,8 @@ class TestQuestion(Base):
     marks: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     explanation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    topic: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    difficulty: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -133,7 +135,52 @@ class TestAttempt(Base):
 
     test = relationship("MockTest", backref="attempts")
     learner = relationship("User", foreign_keys=[learner_id], backref="test_attempts")
+    result = relationship("TestResult", back_populates="attempt", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<TestAttempt id={self.id} test_id={self.test_id} learner_id={self.learner_id} status='{self.status}'>"
+
+
+class TestResult(Base):
+    __test__ = False
+    __tablename__ = "test_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    attempt_id: Mapped[int] = mapped_column(
+        ForeignKey("test_attempts.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+
+    total_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    total_marks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    percentage: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    accuracy: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    is_passed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    time_taken_seconds: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    percentile_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    percentile_label: Mapped[str] = mapped_column(String(100), default="Top 20% Candidate", nullable=False)
+
+    topic_breakdown: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    difficulty_analysis: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    question_reviews: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    attempt = relationship("TestAttempt", back_populates="result")
+
+    def __repr__(self) -> str:
+        return f"<TestResult id={self.id} attempt_id={self.attempt_id} percentage={self.percentage}>"
+
 

@@ -462,7 +462,14 @@ def seed_database():
                 logger.info("Successfully seeded %d sample job postings.", len(sample_jobs))
 
         # Assessment Mock Test Seeding (SKL-56)
-        from app.models.mock_test import MockTest, TestQuestion, MockTestStatus
+        from app.models.mock_test import (
+            MockTest,
+            TestQuestion,
+            MockTestStatus,
+            TestAttempt,
+            TestAttemptStatus,
+            TestResult,
+        )
         instructor_user = db.execute(select(User).where(User.email == "instructor@skill2career.com")).scalar_one_or_none()
         if instructor_user:
             tests_count = db.execute(select(func.count(MockTest.id))).scalar() or 0
@@ -630,11 +637,130 @@ def seed_database():
                             marks=q_data.get("marks", 1),
                             explanation=q_data.get("explanation"),
                             order_index=idx,
+                            topic=q_data.get("topic"),
+                            difficulty=q_data.get("difficulty"),
                         )
                         db.add(question)
 
                 db.commit()
                 logger.info("Successfully seeded %d sample mock tests with questions.", len(sample_mock_tests))
+
+            # Seed sample assessment result matching UI design (SKL-58)
+            learner_user = db.execute(select(User).where(User.email == "learner@skill2career.com")).scalar_one_or_none()
+            dsa_test = db.execute(select(MockTest).where(MockTest.title == "Data Structures & Algorithms")).scalar_one_or_none()
+            if learner_user and dsa_test:
+                existing_attempt = db.execute(
+                    select(TestAttempt).where(
+                        TestAttempt.test_id == dsa_test.id,
+                        TestAttempt.learner_id == learner_user.id,
+                    )
+                ).scalars().first()
+
+                if not existing_attempt:
+                    logger.info("Seeding sample completed attempt and test result for DSA assessment (SKL-58)...")
+                    from datetime import datetime, timezone, timedelta
+                    now = datetime.now(timezone.utc)
+                    sample_attempt = TestAttempt(
+                        test_id=dsa_test.id,
+                        learner_id=learner_user.id,
+                        started_at=now - timedelta(minutes=45),
+                        submitted_at=now - timedelta(minutes=6, seconds=40),
+                        status=TestAttemptStatus.SUBMITTED.value,
+                        answers={"1": "B", "2": "B", "3": "B", "4": "C"},
+                        marked_for_review=[],
+                        score=84.0,
+                        total_marks=100,
+                        percentage=84.0,
+                        is_passed=True,
+                        time_taken_seconds=2300,
+                    )
+                    db.add(sample_attempt)
+                    db.flush()
+
+                    sample_result = TestResult(
+                        attempt_id=sample_attempt.id,
+                        total_score=84.0,
+                        total_marks=100,
+                        percentage=84.0,
+                        accuracy=86.7,
+                        is_passed=True,
+                        time_taken_seconds=2300,
+                        percentile_score=88.0,
+                        percentile_label="Top 12% Candidate",
+                        topic_breakdown=[
+                            {"topic": "Binary Search Trees", "percentage": 100.0, "correct_count": 5, "total_count": 5, "correct_marks": 25.0, "total_marks": 25.0},
+                            {"topic": "Graph Algorithms", "percentage": 80.0, "correct_count": 4, "total_count": 5, "correct_marks": 24.0, "total_marks": 30.0},
+                            {"topic": "Dynamic Programming", "percentage": 70.0, "correct_count": 7, "total_count": 10, "correct_marks": 17.5, "total_marks": 25.0},
+                            {"topic": "Sorting", "percentage": 90.0, "correct_count": 9, "total_count": 10, "correct_marks": 18.0, "total_marks": 20.0},
+                        ],
+                        difficulty_analysis=[
+                            {"difficulty": "Easy", "correct_count": 10, "total_count": 10, "percentage": 100.0, "correct_marks": 20.0, "total_marks": 20.0},
+                            {"difficulty": "Medium", "correct_count": 12, "total_count": 15, "percentage": 80.0, "correct_marks": 36.0, "total_marks": 45.0},
+                            {"difficulty": "Hard", "correct_count": 3, "total_count": 5, "percentage": 60.0, "correct_marks": 21.0, "total_marks": 35.0},
+                        ],
+                        question_reviews=[
+                            {
+                                "question_id": 1,
+                                "order_index": 0,
+                                "question_text": "What is the worst-case time complexity of searching an element in a balanced Binary Search Tree (AVL / Red-Black Tree)?",
+                                "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+                                "selected_option": "B",
+                                "correct_option": "B",
+                                "is_correct": True,
+                                "marks": 2,
+                                "marks_obtained": 2.0,
+                                "explanation": "In a height-balanced BST, the tree height is bounded by O(log n), making lookup operations O(log n).",
+                                "topic": "Binary Search Trees",
+                                "difficulty": "Easy",
+                            },
+                            {
+                                "question_id": 2,
+                                "order_index": 1,
+                                "question_text": "Which data structure follows the Last-In-First-Out (LIFO) property?",
+                                "options": ["Queue", "Stack", "Priority Queue", "Circular Array"],
+                                "selected_option": "B",
+                                "correct_option": "B",
+                                "is_correct": True,
+                                "marks": 1,
+                                "marks_obtained": 1.0,
+                                "explanation": "A Stack operates under the Last-In-First-Out (LIFO) order.",
+                                "topic": "Stacks & Queues",
+                                "difficulty": "Easy",
+                            },
+                            {
+                                "question_id": 3,
+                                "order_index": 2,
+                                "question_text": "What is the space complexity of Depth First Search (DFS) on a graph with V vertices and E edges implemented recursively?",
+                                "options": ["O(1)", "O(V)", "O(V + E)", "O(E)"],
+                                "selected_option": "B",
+                                "correct_option": "B",
+                                "is_correct": True,
+                                "marks": 2,
+                                "marks_obtained": 2.0,
+                                "explanation": "Recursive DFS consumes call stack frames proportional to the maximum tree depth, which is O(V).",
+                                "topic": "Graph Algorithms",
+                                "difficulty": "Medium",
+                            },
+                            {
+                                "question_id": 4,
+                                "order_index": 3,
+                                "question_text": "Which sorting algorithm achieves an average-case time complexity of O(n log n) and is stable?",
+                                "options": ["Quick Sort", "Heap Sort", "Merge Sort", "Selection Sort"],
+                                "selected_option": "C",
+                                "correct_option": "C",
+                                "is_correct": True,
+                                "marks": 2,
+                                "marks_obtained": 2.0,
+                                "explanation": "Merge Sort guarantees O(n log n) in all cases and preserves relative order of duplicate elements.",
+                                "topic": "Sorting",
+                                "difficulty": "Medium",
+                            },
+                        ],
+                    )
+                    db.add(sample_result)
+                    db.commit()
+                    logger.info("Successfully seeded DSA attempt and performance analysis result.")
+
 
         job = db.execute(
             select(JobPosting).where(JobPosting.title == "Junior Software Developer")
