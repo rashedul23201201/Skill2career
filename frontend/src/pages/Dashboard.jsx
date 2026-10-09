@@ -5,6 +5,7 @@ import authService from "../services/authService";
 import courseService from "../services/courseService";
 import Button from "../components/forms/Button";
 import { ROUTES, USER_ROLES } from "../constants";
+import LearnerCandidateDashboard from "./learner/LearnerCandidateDashboard";
 import {
   User,
   Shield,
@@ -66,6 +67,10 @@ export const Dashboard = () => {
       fetchMyCourses();
     }
   }, [user]);
+
+  if (user?.role === USER_ROLES.LEARNER) {
+    return <LearnerCandidateDashboard />;
+  }
 
   const isInstructor = user?.role === USER_ROLES.INSTRUCTOR;
 
