@@ -9,6 +9,7 @@ from app.models.job import JobPosting, JobPostingType, JobWorkMode, JobStatus, J
 from app.models.mock_test import MockTest, TestQuestion, MockTestStatus, TestAttempt, TestAttemptStatus
 from app.models.forum import ForumCategory, ForumPost, ForumComment, ForumLike, ForumReport
 from app.models.screening import ScreeningQuestion, CandidateEvaluation, QuestionType, DealBreakerRule, CandidateStatus
+from app.models.enrollment import CourseEnrollment, LessonProgress, EnrollmentStatus
 
 __all__ = [
     "User",
@@ -25,6 +26,9 @@ __all__ = [
     "Lesson",
     "CourseLevel",
     "CourseStatus",
+    "CourseEnrollment",
+    "LessonProgress",
+    "EnrollmentStatus",
     "JobPosting",
     "JobPostingType",
     "JobWorkMode",

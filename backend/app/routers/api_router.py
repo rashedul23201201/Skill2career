@@ -15,6 +15,7 @@ from app.routers.mock_test import router as mock_test_router
 from app.routers.screening import router as screening_router
 from app.routers.attempt import router as attempt_router
 from app.routers.forum import router as forum_router
+from app.routers.enrollment import router as enrollment_router
 
 api_router = APIRouter()
 
@@ -32,6 +33,7 @@ api_router.include_router(mock_test_router)
 api_router.include_router(screening_router)
 api_router.include_router(attempt_router)
 api_router.include_router(forum_router)
+api_router.include_router(enrollment_router)
 
 router = api_router
 

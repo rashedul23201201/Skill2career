@@ -115,6 +115,15 @@ from app.schemas.screening import (
     CandidateEvaluationResponse,
     PaginatedCandidateEvaluationResponse,
 )
+from app.schemas.enrollment import (
+    EnrollmentResponse,
+    EnrollmentStatusResponse,
+    LessonCompletionRequest,
+    LessonProgressResponse,
+    CourseProgressResponse,
+    EnrolledCourseItem,
+    EnrolledCoursesListResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -207,4 +216,11 @@ __all__ = [
     "CandidateEvaluationStatusUpdateRequest",
     "CandidateEvaluationResponse",
     "PaginatedCandidateEvaluationResponse",
+    "EnrollmentResponse",
+    "EnrollmentStatusResponse",
+    "LessonCompletionRequest",
+    "LessonProgressResponse",
+    "CourseProgressResponse",
+    "EnrolledCourseItem",
+    "EnrolledCoursesListResponse",
 ]

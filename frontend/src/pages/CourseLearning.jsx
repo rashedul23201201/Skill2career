@@ -38,6 +38,8 @@ export const CourseLearning = () => {
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
 
   // Completed lessons tracking
   const [completedLessonIds, setCompletedLessonIds] = useState(() => {
@@ -162,23 +164,42 @@ export const CourseLearning = () => {
 
         setLessons(allLessons);
 
+        // Synchronize real enrollment progress from backend if authenticated
+        if (user) {
+          try {
+            const progRes = await courseService.getCourseProgress(id);
+            if (progRes?.data) {
+              const serverCompleted = progRes.data.completed_lesson_ids || [];
+              setCompletedLessonIds(serverCompleted);
+              setIsEnrolled(progRes.data.is_enrolled);
+              localStorage.setItem(
+                `course_${id}_completed_lessons`,
+                JSON.stringify(serverCompleted)
+              );
+
+              if (progRes.data.last_accessed_lesson_id && !lessonId) {
+                const lastIdx = allLessons.findIndex(
+                  (l) => l.id === progRes.data.last_accessed_lesson_id
+                );
+                if (lastIdx !== -1) {
+                  setActiveLessonIndex(lastIdx);
+                }
+              }
+            }
+          } catch {
+            // Guest or non-enrolled
+          }
+        }
+
         // Select initial lesson
         if (lessonId) {
           const targetIndex = allLessons.findIndex((l) => String(l.id) === String(lessonId));
           if (targetIndex !== -1) {
             setActiveLessonIndex(targetIndex);
           }
-        } else {
-          // Default to lesson 5 or first uncompleted
+        } else if (!user) {
           const defaultIndex = allLessons.length > 4 ? 4 : 0;
           setActiveLessonIndex(defaultIndex);
-        }
-
-        // Initialize default completed state if empty
-        if (completedLessonIds.length === 0 && allLessons.length >= 4) {
-          const initialCompleted = allLessons.slice(0, 4).map((l) => l.id);
-          setCompletedLessonIds(initialCompleted);
-          localStorage.setItem(`course_${id}_completed_lessons`, JSON.stringify(initialCompleted));
         }
       } catch (err) {
         console.error("Failed to load course learning context:", err);
@@ -189,23 +210,53 @@ export const CourseLearning = () => {
     };
 
     fetchCourseAndLessons();
-  }, [id, lessonId]);
+  }, [id, lessonId, user]);
 
   const activeLesson = lessons[activeLessonIndex] || null;
 
-  // Toggle lesson completed status
-  const toggleLessonCompleted = (lesId) => {
+  // Toggle lesson completed status (SKL-54 AC-4)
+  const toggleLessonCompleted = async (lesId, e) => {
+    if (e) e.stopPropagation();
+    const isCompleted = completedLessonIds.includes(lesId);
+    const nextState = !isCompleted;
+
     setCompletedLessonIds((prev) => {
-      const next = prev.includes(lesId)
+      const next = isCompleted
         ? prev.filter((idVal) => idVal !== lesId)
         : [...prev, lesId];
       try {
         localStorage.setItem(`course_${id}_completed_lessons`, JSON.stringify(next));
-      } catch (e) {
-        console.error(e);
+      } catch (err) {
+        console.error(err);
       }
       return next;
     });
+
+    if (user) {
+      try {
+        await courseService.completeLesson(lesId, nextState);
+      } catch (err) {
+        console.error("Failed to sync lesson progress:", err);
+      }
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!user) {
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+    try {
+      setEnrolling(true);
+      await courseService.enrollInCourse(id);
+      setIsEnrolled(true);
+    } catch (err) {
+      if (err.response?.data?.error_code === "ALREADY_ENROLLED") {
+        setIsEnrolled(true);
+      }
+    } finally {
+      setEnrolling(false);
+    }
   };
 
   // Navigations
@@ -300,6 +351,26 @@ export const CourseLearning = () => {
           </p>
         </div>
 
+        {/* Enrollment Banner if previewing */}
+        {!isEnrolled && (
+          <div className="bg-gradient-to-r from-navy-900 to-blue-950 rounded-2xl p-4 sm:p-5 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold">You are currently previewing this course</h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Enroll now to record your lesson progress and update your candidate curriculum.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleEnroll}
+              disabled={enrolling}
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-xs transition-colors flex-shrink-0"
+            >
+              {enrolling ? "Enrolling..." : "Enroll in Course"}
+            </button>
+          </div>
+        )}
+
         {/* Top Course Card & Progress Banner */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -367,7 +438,6 @@ export const CourseLearning = () => {
               {lessons.map((les, idx) => {
                 const isCurrent = idx === activeLessonIndex;
                 const isCompleted = completedLessonIds.includes(les.id);
-                const isLocked = !isCompleted && !isCurrent && idx > activeLessonIndex + 2;
 
                 return (
                   <div
@@ -383,17 +453,32 @@ export const CourseLearning = () => {
                       {/* Status Indicator Icon */}
                       <div className="pt-0.5 flex-shrink-0">
                         {isCompleted ? (
-                          <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleLessonCompleted(les.id, e)}
+                            title="Mark as incomplete"
+                            className="w-5 h-5 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-600 flex items-center justify-center cursor-pointer transition-colors"
+                          >
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          </div>
+                          </button>
                         ) : isCurrent ? (
-                          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleLessonCompleted(les.id, e)}
+                            title="Mark as completed"
+                            className="w-5 h-5 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer transition-colors"
+                          >
                             <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                          </div>
+                          </button>
                         ) : (
-                          <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleLessonCompleted(les.id, e)}
+                            title="Mark as completed"
+                            className="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                          >
                             <Lock className="w-3 h-3" />
-                          </div>
+                          </button>
                         )}
                       </div>
 

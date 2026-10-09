@@ -32,6 +32,9 @@ export const CourseDetails = () => {
   // Active playing lesson
   const [activeLesson, setActiveLesson] = useState(null);
   const [expandedModules, setExpandedModules] = useState({});
+  const [enrollmentStatus, setEnrollmentStatus] = useState(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollSuccess, setEnrollSuccess] = useState(false);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -55,6 +58,17 @@ export const CourseDetails = () => {
             setActiveLesson(c.modules[0].lessons[0]);
           }
         }
+
+        if (user) {
+          try {
+            const enrRes = await courseService.getEnrollmentStatus(id);
+            if (enrRes?.data) {
+              setEnrollmentStatus(enrRes.data);
+            }
+          } catch {
+            // Unenrolled or non-learner
+          }
+        }
       } catch (err) {
         console.error("Error fetching course:", err);
         setError("Unable to load course. It may be unpublished or does not exist.");
@@ -64,7 +78,26 @@ export const CourseDetails = () => {
     };
 
     fetchCourse();
-  }, [id]);
+  }, [id, user]);
+
+  const handleEnroll = async () => {
+    if (!user) {
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+    try {
+      setEnrolling(true);
+      await courseService.enrollInCourse(id);
+      setEnrollSuccess(true);
+      setEnrollmentStatus({ is_enrolled: true });
+    } catch (err) {
+      if (err.response?.data?.error_code === "ALREADY_ENROLLED") {
+        setEnrollmentStatus({ is_enrolled: true });
+      }
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   const toggleModule = (modId) => {
     setExpandedModules((prev) => ({
@@ -184,20 +217,49 @@ export const CourseDetails = () => {
             <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">
               Tuition
             </span>
-            <div className="text-2xl font-black text-navy-950">
-              {course.is_free || course.price === 0 ? "Free Access" : `BDT ${course.price}`}
+            <div className="flex items-center justify-between">
+              <div className="text-2xl font-black text-navy-950">
+                {course.is_free || course.price === 0 ? "Free Access" : `BDT ${course.price}`}
+              </div>
+              {enrollmentStatus?.is_enrolled && (
+                <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Enrolled</span>
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500">
               Full curriculum access including all study materials
             </p>
           </div>
 
-          <Link
-            to={`/courses/${course.id}/learn`}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-1.5"
-          >
-            <span>Start Learning & Course Materials</span>
-          </Link>
+          {enrollmentStatus?.is_enrolled ? (
+            <Link
+              to={`/courses/${course.id}/learn`}
+              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-1.5"
+            >
+              <span>Continue Learning</span>
+            </Link>
+          ) : user ? (
+            <button
+              onClick={handleEnroll}
+              disabled={enrolling}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-1.5 cursor-pointer"
+            >
+              {enrolling ? (
+                <span>Enrolling...</span>
+              ) : (
+                <span>1-Click Enroll in Course</span>
+              )}
+            </button>
+          ) : (
+            <Link
+              to={ROUTES.LOGIN}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-1.5"
+            >
+              <span>Log in to Enroll</span>
+            </Link>
+          )}
         </div>
       </div>
 

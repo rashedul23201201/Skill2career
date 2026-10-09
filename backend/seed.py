@@ -19,6 +19,7 @@ from app.models.screening import (
     CandidateStatus,
 )
 from app.models.forum import ForumCategory, ForumPost, ForumComment
+from app.models.enrollment import CourseEnrollment, LessonProgress, EnrollmentStatus
 from app.core.security import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -1341,6 +1342,56 @@ def seed_database():
 
             db.commit()
             logger.info("Successfully seeded %d sample forum discussions.", len(posts_seed_data))
+
+        # Seed Course Enrollments and Lesson Progress for Learner (SKL-54)
+        learner_user = db.execute(
+            select(User).where(User.email == "learner@skill2career.com")
+        ).scalar_one_or_none()
+        if learner_user:
+            courses = list(db.execute(select(Course)).scalars().all())
+            for crs in courses:
+                existing_enr = db.execute(
+                    select(CourseEnrollment).where(
+                        CourseEnrollment.user_id == learner_user.id,
+                        CourseEnrollment.course_id == crs.id,
+                    )
+                ).scalar_one_or_none()
+                if not existing_enr:
+                    total_lessons = len(crs.lessons)
+                    if "Data Structures & Algorithms" in crs.title and total_lessons >= 6:
+                        completed_count = 6
+                        prog_pct = 75.0
+                    elif total_lessons > 0:
+                        completed_count = max(1, total_lessons // 2)
+                        prog_pct = round((completed_count / total_lessons) * 100.0, 1)
+                    else:
+                        completed_count = 0
+                        prog_pct = 0.0
+
+                    last_lesson = crs.lessons[completed_count - 1] if completed_count > 0 and crs.lessons else None
+                    enr = CourseEnrollment(
+                        user_id=learner_user.id,
+                        course_id=crs.id,
+                        status=EnrollmentStatus.ACTIVE.value,
+                        progress_percentage=prog_pct,
+                        completed_lessons_count=completed_count,
+                        last_accessed_lesson_id=last_lesson.id if last_lesson else None,
+                    )
+                    db.add(enr)
+                    db.flush()
+
+                    for idx in range(completed_count):
+                        les = crs.lessons[idx]
+                        lp = LessonProgress(
+                            user_id=learner_user.id,
+                            course_id=crs.id,
+                            lesson_id=les.id,
+                            enrollment_id=enr.id,
+                            is_completed=True,
+                        )
+                        db.add(lp)
+            db.commit()
+            logger.info("Successfully seeded course enrollments and progress for sample learner.")
 
     except Exception as e:
         db.rollback()
