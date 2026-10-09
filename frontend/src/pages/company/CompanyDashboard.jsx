@@ -24,6 +24,10 @@ import {
   CalendarCheck,
   Clock,
   Send,
+  Star,
+  Award,
+  Sparkles,
+  Share2,
 } from "lucide-react";
 
 export const CompanyDashboard = () => {
@@ -52,6 +56,29 @@ export const CompanyDashboard = () => {
     notes: "",
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  const [selectedInterviewForFeedback, setSelectedInterviewForFeedback] = useState(null);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [feedbackTab, setFeedbackTab] = useState("SCORECARD");
+  const [teamFeedback, setTeamFeedback] = useState(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackSaving, setFeedbackSaving] = useState(false);
+
+  const [feedbackForm, setFeedbackForm] = useState({
+    overall_score: 82,
+    technical_score: 85,
+    communication_score: 80,
+    problem_solving_score: 88,
+    recommendation: "HIRE",
+    strengths: ["Problem Solving", "Communication", "Data Structures"],
+    newStrengthInput: "",
+    improvement_areas: ["System Design"],
+    newImprovementInput: "",
+    feedback_notes: "",
+    internal_notes: "",
+    suggested_next_action: "OFFER",
+    is_shared_with_candidate: false,
+  });
 
   const [formData, setFormData] = useState({
     company_name: "",
@@ -139,6 +166,179 @@ export const CompanyDashboard = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleOpenFeedback = async (interview) => {
+    setSelectedInterviewForFeedback(interview);
+    setIsFeedbackModalOpen(true);
+    setFeedbackTab("SCORECARD");
+    try {
+      setFeedbackLoading(true);
+      const res = await interviewService.getInterviewFeedback(interview.id);
+      if (res?.data) {
+        setTeamFeedback(res.data);
+        const myFeedback =
+          res.data.feedbacks?.find((f) => f.interviewer_id === user?.id) ||
+          res.data.feedbacks?.[0];
+        if (myFeedback) {
+          setFeedbackForm({
+            overall_score: myFeedback.overall_score,
+            technical_score: myFeedback.technical_score,
+            communication_score: myFeedback.communication_score,
+            problem_solving_score: myFeedback.problem_solving_score,
+            recommendation: myFeedback.recommendation || "HIRE",
+            strengths: myFeedback.strengths || ["Problem Solving", "Communication", "Data Structures"],
+            newStrengthInput: "",
+            improvement_areas: Array.isArray(myFeedback.improvement_areas)
+              ? myFeedback.improvement_areas.map((a) => (typeof a === "object" ? a.area || JSON.stringify(a) : a))
+              : ["System Design"],
+            newImprovementInput: "",
+            feedback_notes: myFeedback.feedback_notes || "",
+            internal_notes: myFeedback.internal_notes || "",
+            suggested_next_action: myFeedback.suggested_next_action || "OFFER",
+            is_shared_with_candidate: myFeedback.is_shared_with_candidate || false,
+          });
+        } else {
+          setFeedbackForm({
+            overall_score: 82,
+            technical_score: 85,
+            communication_score: 80,
+            problem_solving_score: 88,
+            recommendation: "HIRE",
+            strengths: ["Problem Solving", "Communication", "Data Structures"],
+            newStrengthInput: "",
+            improvement_areas: ["System Design"],
+            newImprovementInput: "",
+            feedback_notes:
+              "Strong analytical intuition with clean algorithmic complexity. Continue practicing distributed system design and database indexing.",
+            internal_notes: "Demonstrates strong foundation and high engineering potential.",
+            suggested_next_action: "OFFER",
+            is_shared_with_candidate: false,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load interview feedback details:", err);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    if (!selectedInterviewForFeedback) return;
+    try {
+      setFeedbackSaving(true);
+      const payload = {
+        overall_score: Number(feedbackForm.overall_score),
+        technical_score: Number(feedbackForm.technical_score),
+        communication_score: Number(feedbackForm.communication_score),
+        problem_solving_score: Number(feedbackForm.problem_solving_score),
+        recommendation: feedbackForm.recommendation,
+        strengths: feedbackForm.strengths,
+        improvement_areas: feedbackForm.improvement_areas.map((a) => ({ area: a })),
+        feedback_notes: feedbackForm.feedback_notes || undefined,
+        internal_notes: feedbackForm.internal_notes || undefined,
+        suggested_next_action: feedbackForm.suggested_next_action || undefined,
+        is_shared_with_candidate: feedbackForm.is_shared_with_candidate,
+      };
+
+      await interviewService.submitFeedback(selectedInterviewForFeedback.id, payload);
+      alert("Interview scorecard recorded successfully!");
+
+      if (feedbackForm.suggested_next_action && selectedInterviewForFeedback.application_id) {
+        const nextActionStatus =
+          feedbackForm.suggested_next_action === "OFFER"
+            ? "OFFERED"
+            : feedbackForm.suggested_next_action === "REJECT"
+            ? "REJECTED"
+            : null;
+        if (
+          nextActionStatus &&
+          window.confirm(
+            `Scorecard recorded! Would you like to update the candidate's application status to "${nextActionStatus}" now?`
+          )
+        ) {
+          try {
+            await screeningService.updateApplicantStatus(
+              selectedInterviewForFeedback.application_id,
+              nextActionStatus
+            );
+          } catch (statusErr) {
+            console.error("Failed to update status prompt:", statusErr);
+          }
+        }
+      }
+
+      await loadDashboardData();
+      setIsFeedbackModalOpen(false);
+    } catch (err) {
+      console.error("Failed to submit feedback:", err);
+      alert(err.response?.data?.message || "Failed to submit interview feedback.");
+    } finally {
+      setFeedbackSaving(false);
+    }
+  };
+
+  const handleToggleShare = async (interviewId, isShared) => {
+    try {
+      await interviewService.shareFeedback(interviewId, isShared);
+      const updated = await interviewService.getInterviewFeedback(interviewId);
+      if (updated?.data) setTeamFeedback(updated.data);
+      alert(
+        isShared
+          ? "Feedback successfully released to candidate!"
+          : "Feedback is now private to the recruiting team."
+      );
+      await loadDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update feedback visibility.");
+    }
+  };
+
+  const handleAddStrength = (e) => {
+    e.preventDefault();
+    if (!feedbackForm.newStrengthInput.trim()) return;
+    if (!feedbackForm.strengths.includes(feedbackForm.newStrengthInput.trim())) {
+      setFeedbackForm({
+        ...feedbackForm,
+        strengths: [...feedbackForm.strengths, feedbackForm.newStrengthInput.trim()],
+        newStrengthInput: "",
+      });
+    } else {
+      setFeedbackForm({ ...feedbackForm, newStrengthInput: "" });
+    }
+  };
+
+  const handleRemoveStrength = (tag) => {
+    setFeedbackForm({
+      ...feedbackForm,
+      strengths: feedbackForm.strengths.filter((s) => s !== tag),
+    });
+  };
+
+  const handleAddImprovement = (e) => {
+    e.preventDefault();
+    if (!feedbackForm.newImprovementInput.trim()) return;
+    if (!feedbackForm.improvement_areas.includes(feedbackForm.newImprovementInput.trim())) {
+      setFeedbackForm({
+        ...feedbackForm,
+        improvement_areas: [
+          ...feedbackForm.improvement_areas,
+          feedbackForm.newImprovementInput.trim(),
+        ],
+        newImprovementInput: "",
+      });
+    } else {
+      setFeedbackForm({ ...feedbackForm, newImprovementInput: "" });
+    }
+  };
+
+  const handleRemoveImprovement = (tag) => {
+    setFeedbackForm({
+      ...feedbackForm,
+      improvement_areas: feedbackForm.improvement_areas.filter((a) => a !== tag),
+    });
   };
 
   const getCompanyInitials = (name) => {
@@ -718,6 +918,25 @@ export const CompanyDashboard = () => {
                         >
                           .ics Invite
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsInterviewsModalOpen(false);
+                            handleOpenFeedback(iv);
+                          }}
+                          className={`px-2.5 py-1 rounded-md font-bold text-xs transition-all flex items-center space-x-1 ${
+                            iv.has_feedback
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                              : "bg-navy-950 hover:bg-navy-900 text-white shadow-2xs"
+                          }`}
+                        >
+                          <Star className="w-3 h-3" />
+                          <span>
+                            {iv.has_feedback
+                              ? `Scorecard (${iv.latest_feedback_score}/100)`
+                              : "Scorecard"}
+                          </span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -827,6 +1046,23 @@ export const CompanyDashboard = () => {
               </button>
 
               <div className="flex items-center space-x-2">
+                {companyInterviews.some((iv) => iv.application_id === selectedApplicant.id) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const matchIv = companyInterviews.find(
+                        (iv) => iv.application_id === selectedApplicant.id
+                      );
+                      setSelectedApplicant(null);
+                      handleOpenFeedback(matchIv);
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                    <span>Evaluation Scorecard</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setIsScheduleModalOpen(true)}
@@ -1035,6 +1271,614 @@ export const CompanyDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Recruiter Interview Evaluation Scorecard & Team Feedback Modal (SKL-10) */}
+      {isFeedbackModalOpen && selectedInterviewForFeedback && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-2xl w-full p-6 space-y-5 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-navy-950 font-heading">
+                    Interview Evaluation Scorecard
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Candidate: {selectedInterviewForFeedback.candidate_name} · Position:{" "}
+                    {selectedInterviewForFeedback.job_title}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFeedbackModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
+              <button
+                type="button"
+                onClick={() => setFeedbackTab("SCORECARD")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  feedbackTab === "SCORECARD"
+                    ? "bg-navy-950 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Submit / Edit Scorecard
+              </button>
+              <button
+                type="button"
+                onClick={() => setFeedbackTab("TEAM_VIEW")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                  feedbackTab === "TEAM_VIEW"
+                    ? "bg-navy-950 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>
+                  Team Consensus ({teamFeedback?.total_feedbacks || 0})
+                </span>
+              </button>
+            </div>
+
+            {feedbackLoading ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                Loading scorecard and evaluation history...
+              </div>
+            ) : feedbackTab === "SCORECARD" ? (
+              /* TAB 1: SUBMIT / EDIT SCORECARD */
+              <form onSubmit={handleSubmitFeedback} className="space-y-4 text-xs">
+                {/* Multi-Criteria Ratings Grid */}
+                <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="font-bold text-slate-900 block text-xs uppercase tracking-wider">
+                    Competency Criteria & Ratings (0 - 100)
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <div className="flex justify-between text-slate-700 font-semibold mb-1">
+                        <span>Technical Skills</span>
+                        <span className="text-navy-950 font-bold">{feedbackForm.technical_score}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={feedbackForm.technical_score}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          const newAvg = Math.round(
+                            (val + feedbackForm.communication_score + feedbackForm.problem_solving_score) / 3
+                          );
+                          setFeedbackForm({
+                            ...feedbackForm,
+                            technical_score: val,
+                            overall_score: newAvg,
+                          });
+                        }}
+                        className="w-full accent-navy-950"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-slate-700 font-semibold mb-1">
+                        <span>Communication</span>
+                        <span className="text-navy-950 font-bold">{feedbackForm.communication_score}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={feedbackForm.communication_score}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          const newAvg = Math.round(
+                            (feedbackForm.technical_score + val + feedbackForm.problem_solving_score) / 3
+                          );
+                          setFeedbackForm({
+                            ...feedbackForm,
+                            communication_score: val,
+                            overall_score: newAvg,
+                          });
+                        }}
+                        className="w-full accent-navy-950"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-slate-700 font-semibold mb-1">
+                        <span>Problem Solving</span>
+                        <span className="text-navy-950 font-bold">{feedbackForm.problem_solving_score}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={feedbackForm.problem_solving_score}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          const newAvg = Math.round(
+                            (feedbackForm.technical_score + feedbackForm.communication_score + val) / 3
+                          );
+                          setFeedbackForm({
+                            ...feedbackForm,
+                            problem_solving_score: val,
+                            overall_score: newAvg,
+                          });
+                        }}
+                        className="w-full accent-navy-950"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                    <span className="text-slate-600 font-semibold">Overall Composite Score</span>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={feedbackForm.overall_score}
+                        onChange={(e) =>
+                          setFeedbackForm({ ...feedbackForm, overall_score: Number(e.target.value) })
+                        }
+                        className="w-16 p-1 text-center font-bold text-navy-950 border border-slate-300 rounded-md bg-white text-xs"
+                      />
+                      <span className="font-bold text-slate-500">/ 100</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Overall Recommendation */}
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1.5">
+                    Hiring Recommendation (AC-1)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { value: "STRONG_HIRE", label: "Strong Hire", color: "border-emerald-500 text-emerald-700 bg-emerald-50" },
+                      { value: "HIRE", label: "Hire", color: "border-blue-500 text-blue-700 bg-blue-50" },
+                      { value: "NEUTRAL", label: "Neutral", color: "border-amber-500 text-amber-700 bg-amber-50" },
+                      { value: "NO_HIRE", label: "No Hire", color: "border-rose-500 text-rose-700 bg-rose-50" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setFeedbackForm({ ...feedbackForm, recommendation: opt.value })}
+                        className={`py-2 px-3 rounded-xl border text-center font-bold text-xs transition-all ${
+                          feedbackForm.recommendation === opt.value
+                            ? `${opt.color} ring-2 ring-offset-1 ring-slate-400 shadow-xs`
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Strengths Tags */}
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Candidate Strengths
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {feedbackForm.strengths.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      >
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStrength(tag)}
+                          className="hover:text-emerald-950 font-bold ml-1"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Add strength (e.g. System Design, Clean Code)..."
+                      value={feedbackForm.newStrengthInput}
+                      onChange={(e) =>
+                        setFeedbackForm({ ...feedbackForm, newStrengthInput: e.target.value })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddStrength(e);
+                        }
+                      }}
+                      className="flex-1 p-2 rounded-lg border border-slate-200 bg-white text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddStrength}
+                      className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Improvement Areas Tags */}
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Areas for Improvement
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {feedbackForm.improvement_areas.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200"
+                      >
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImprovement(tag)}
+                          className="hover:text-blue-950 font-bold ml-1"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Add improvement area (e.g. Distributed Caching)..."
+                      value={feedbackForm.newImprovementInput}
+                      onChange={(e) =>
+                        setFeedbackForm({ ...feedbackForm, newImprovementInput: e.target.value })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddImprovement(e);
+                        }
+                      }}
+                      className="flex-1 p-2 rounded-lg border border-slate-200 bg-white text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddImprovement}
+                      className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Feedback Notes */}
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Constructive Feedback Notes (Candidate-Facing when shared)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Provide constructive actionable feedback for the candidate..."
+                    value={feedbackForm.feedback_notes}
+                    onChange={(e) =>
+                      setFeedbackForm({ ...feedbackForm, feedback_notes: e.target.value })
+                    }
+                    className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs leading-relaxed"
+                  />
+                </div>
+
+                {/* Internal Notes */}
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Confidential Internal Notes (Hiring Committee Only)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Private notes for team discussion, compensation thoughts..."
+                    value={feedbackForm.internal_notes}
+                    onChange={(e) =>
+                      setFeedbackForm({ ...feedbackForm, internal_notes: e.target.value })
+                    }
+                    className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs leading-relaxed"
+                  />
+                </div>
+
+                {/* Next Pipeline Action Prompting (AC-3) */}
+                <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200 space-y-1.5">
+                  <div className="flex items-center space-x-1.5 text-blue-900 font-bold">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    <span>Suggested Next Pipeline Action (AC-3)</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                    {[
+                      { key: "OFFER", label: "Proceed to Offer" },
+                      { key: "NEXT_ROUND", label: "Next Interview" },
+                      { key: "REJECT", label: "Send Rejection" },
+                      { key: "HOLD", label: "Keep On Hold" },
+                    ].map((act) => (
+                      <button
+                        key={act.key}
+                        type="button"
+                        onClick={() =>
+                          setFeedbackForm({ ...feedbackForm, suggested_next_action: act.key })
+                        }
+                        className={`py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all ${
+                          feedbackForm.suggested_next_action === act.key
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {act.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Candidate Sharing Toggle (AC-4) */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="share_toggle"
+                    checked={feedbackForm.is_shared_with_candidate}
+                    onChange={(e) =>
+                      setFeedbackForm({
+                        ...feedbackForm,
+                        is_shared_with_candidate: e.target.checked,
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-navy-950 focus:ring-navy-950"
+                  />
+                  <label htmlFor="share_toggle" className="cursor-pointer">
+                    <span className="font-bold text-slate-800 block">
+                      Release constructive feedback to candidate (AC-4)
+                    </span>
+                    <span className="text-[11px] text-slate-500 leading-snug block mt-0.5">
+                      When checked, the candidate will be able to inspect their ratings, key strengths, and constructive review notes directly on their application dashboard.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Submit buttons */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsFeedbackModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={feedbackSaving}
+                    className="px-5 py-2 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-bold text-xs shadow-xs transition-colors flex items-center space-x-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{feedbackSaving ? "Saving..." : "Save Scorecard"}</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* TAB 2: CONSOLIDATED TEAM FEEDBACK VIEW (AC-2) */
+              <div className="space-y-4 text-xs">
+                {teamFeedback && teamFeedback.total_feedbacks > 0 ? (
+                  <>
+                    {/* Aggregated Consensus Banner */}
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider">
+                            Team Evaluation Consensus
+                          </span>
+                          <h4 className="text-xl font-extrabold text-navy-950 font-heading mt-0.5">
+                            {teamFeedback.average_overall_score} / 100
+                          </h4>
+                          <span className="text-slate-500 text-[11px]">
+                            Aggregated from {teamFeedback.total_feedbacks} interviewer scorecard{teamFeedback.total_feedbacks > 1 ? "s" : ""}
+                          </span>
+                        </div>
+
+                        <div className="text-right space-y-1">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase block">
+                            Candidate Visibility
+                          </span>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${
+                              teamFeedback.is_shared_with_candidate
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-slate-200 text-slate-700"
+                            }`}
+                          >
+                            {teamFeedback.is_shared_with_candidate ? "Released to Candidate" : "Internal Only"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Criteria Breakdown */}
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                        <div className="p-2 rounded-lg bg-white border border-slate-100 text-center">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase block">
+                            Technical
+                          </span>
+                          <span className="font-bold text-navy-950 text-sm">
+                            {teamFeedback.average_technical_score}%
+                          </span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white border border-slate-100 text-center">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase block">
+                            Communication
+                          </span>
+                          <span className="font-bold text-navy-950 text-sm">
+                            {teamFeedback.average_communication_score}%
+                          </span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white border border-slate-100 text-center">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase block">
+                            Problem Solving
+                          </span>
+                          <span className="font-bold text-navy-950 text-sm">
+                            {teamFeedback.average_problem_solving_score}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quick Sharing Action */}
+                      <div className="pt-2 flex items-center justify-between border-t border-slate-200">
+                        <span className="text-slate-600 font-medium">
+                          Candidate-Facing Visibility (AC-4)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleShare(
+                              selectedInterviewForFeedback.id,
+                              !teamFeedback.is_shared_with_candidate
+                            )
+                          }
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                            teamFeedback.is_shared_with_candidate
+                              ? "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200"
+                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                          }`}
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>
+                            {teamFeedback.is_shared_with_candidate
+                              ? "Revoke Candidate Sharing"
+                              : "Release Feedback to Candidate"}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Consolidated Strengths & Improvements */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50 space-y-1.5">
+                        <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                          Consolidated Strengths
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {teamFeedback.top_strengths.map((str) => (
+                            <span
+                              key={str}
+                              className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800"
+                            >
+                              {str}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50 space-y-1.5">
+                        <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">
+                          Consolidated Improvement Areas
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {teamFeedback.top_improvement_areas.map((imp) => (
+                            <span
+                              key={imp}
+                              className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800"
+                            >
+                              {imp}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual Interviewer Scorecards */}
+                    <div className="space-y-3 pt-2">
+                      <span className="font-bold text-navy-950 block text-xs uppercase tracking-wider">
+                        Individual Interviewer Scorecards
+                      </span>
+
+                      {teamFeedback.feedbacks.map((f) => (
+                        <div
+                          key={f.id}
+                          className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-bold text-navy-950 text-xs">
+                                {f.interviewer_name || "Team Interviewer"}
+                              </span>
+                              <span className="text-[11px] text-slate-400 ml-2">
+                                {new Date(f.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-slate-100 text-navy-950">
+                                {f.overall_score} / 100
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  f.recommendation === "STRONG_HIRE"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : f.recommendation === "HIRE"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : f.recommendation === "NEUTRAL"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-rose-100 text-rose-800"
+                                }`}
+                              >
+                                {f.recommendation.replace("_", " ")}
+                              </span>
+                            </div>
+                          </div>
+
+                          {f.feedback_notes && (
+                            <p className="text-slate-600 text-xs italic leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                              "{f.feedback_notes}"
+                            </p>
+                          )}
+
+                          {f.internal_notes && (
+                            <div className="text-[11px] text-slate-500 bg-amber-50/60 p-2 rounded-lg border border-amber-100">
+                              <strong className="text-amber-900">Internal: </strong>
+                              {f.internal_notes}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 text-center text-xs text-slate-500 space-y-2">
+                    <p>No feedback scorecards have been recorded for this session yet.</p>
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackTab("SCORECARD")}
+                      className="px-4 py-2 rounded-xl bg-navy-950 text-white font-bold text-xs shadow-xs"
+                    >
+                      Fill First Scorecard
+                    </button>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsFeedbackModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-navy-950 text-white font-semibold text-xs"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

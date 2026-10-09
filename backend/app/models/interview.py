@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
-from typing import Optional, List
-from sqlalchemy import String, Boolean, DateTime, Integer, ForeignKey, Text, func
+from typing import Optional, List, Any
+from sqlalchemy import String, Boolean, DateTime, Integer, ForeignKey, Text, JSON, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
@@ -12,6 +12,13 @@ class InterviewStatus(str, enum.Enum):
     RESCHEDULE_REQUESTED = "RESCHEDULE_REQUESTED"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
+
+class InterviewRecommendation(str, enum.Enum):
+    STRONG_HIRE = "STRONG_HIRE"
+    HIRE = "HIRE"
+    NEUTRAL = "NEUTRAL"
+    NO_HIRE = "NO_HIRE"
 
 
 class InterviewRequest(Base):
@@ -97,6 +104,12 @@ class InterviewRequest(Base):
         foreign_keys=[selected_slot_id],
         post_update=True,
     )
+    feedbacks: Mapped[List["InterviewFeedback"]] = relationship(
+        "InterviewFeedback",
+        foreign_keys="InterviewFeedback.interview_id",
+        back_populates="interview_request",
+        cascade="all, delete-orphan",
+    )
 
 
 class InterviewSlot(Base):
@@ -120,4 +133,68 @@ class InterviewSlot(Base):
         "InterviewRequest",
         foreign_keys=[interview_request_id],
         back_populates="slots",
+    )
+
+
+class InterviewFeedback(Base):
+    __tablename__ = "interview_feedbacks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    interview_id: Mapped[int] = mapped_column(
+        ForeignKey("interview_requests.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    interviewer_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    overall_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    technical_score: Mapped[int] = mapped_column(Integer, default=75, nullable=False)
+    communication_score: Mapped[int] = mapped_column(Integer, default=75, nullable=False)
+    problem_solving_score: Mapped[int] = mapped_column(Integer, default=75, nullable=False)
+
+    recommendation: Mapped[str] = mapped_column(
+        String(50), default=InterviewRecommendation.HIRE.value, nullable=False, index=True
+    )
+
+    strengths: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    improvement_areas: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    competency_breakdown: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+
+    feedback_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    internal_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    suggested_next_action: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    is_shared_with_candidate: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    shared_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    interview_request = relationship(
+        "InterviewRequest",
+        foreign_keys=[interview_id],
+        back_populates="feedbacks",
+    )
+    application = relationship(
+        "JobApplication",
+        foreign_keys=[application_id],
+        backref="interview_feedbacks",
+    )
+    interviewer = relationship(
+        "User",
+        foreign_keys=[interviewer_id],
     )

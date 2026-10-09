@@ -38,6 +38,8 @@ export const LearnerApplications = () => {
   const [selectedAppId, setSelectedAppId] = useState(null);
   const [activeInterview, setActiveInterview] = useState(null);
   const [interviewLoading, setInterviewLoading] = useState(false);
+  const [interviewFeedback, setInterviewFeedback] = useState(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const [page, setPage] = useState(1);
   const pageSize = 5;
@@ -90,32 +92,51 @@ export const LearnerApplications = () => {
   useEffect(() => {
     if (!selectedApp) {
       setActiveInterview(null);
+      setInterviewFeedback(null);
       return;
     }
 
-    const fetchInterview = async () => {
+    const fetchInterviewAndFeedback = async () => {
       try {
         setInterviewLoading(true);
-        const res = await interviewService.getInterviewForApplication(selectedApp.id);
-        if (res?.data) {
-          setActiveInterview(res.data);
-          if (res.data.selected_slot_id) {
-            setSelectedSlotId(res.data.selected_slot_id);
-          } else if (res.data.slots && res.data.slots.length > 0) {
-            setSelectedSlotId(res.data.slots[0].id);
+        setFeedbackLoading(true);
+
+        const [interviewRes, feedbackRes] = await Promise.allSettled([
+          interviewService.getInterviewForApplication(selectedApp.id),
+          interviewService.getApplicationFeedback(selectedApp.id),
+        ]);
+
+        if (interviewRes.status === "fulfilled" && interviewRes.value?.data) {
+          setActiveInterview(interviewRes.value.data);
+          if (interviewRes.value.data.selected_slot_id) {
+            setSelectedSlotId(interviewRes.value.data.selected_slot_id);
+          } else if (interviewRes.value.data.slots && interviewRes.value.data.slots.length > 0) {
+            setSelectedSlotId(interviewRes.value.data.slots[0].id);
           }
         } else {
           setActiveInterview(null);
         }
+
+        if (
+          feedbackRes.status === "fulfilled" &&
+          feedbackRes.value?.data &&
+          feedbackRes.value.data.total_feedbacks > 0
+        ) {
+          setInterviewFeedback(feedbackRes.value.data);
+        } else {
+          setInterviewFeedback(null);
+        }
       } catch (err) {
-        console.warn("No interview session found for application:", err);
+        console.warn("Error fetching interview or feedback:", err);
         setActiveInterview(null);
+        setInterviewFeedback(null);
       } finally {
         setInterviewLoading(false);
+        setFeedbackLoading(false);
       }
     };
 
-    fetchInterview();
+    fetchInterviewAndFeedback();
     setShowRescheduleForm(false);
   }, [selectedAppId]);
 
@@ -801,81 +822,141 @@ export const LearnerApplications = () => {
             </button>
           </div>
 
-          {/* Right Card: Evaluation Record / Interview Feedback (SKL-10 Preview) */}
+          {/* Right Card: Evaluation Record / Interview Feedback (SKL-10) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-700">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Evaluation Record</span>
-                </div>
+            {interviewFeedback && interviewFeedback.total_feedbacks > 0 ? (
+              <>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Evaluation Record</span>
+                    </div>
 
-                <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">
-                    Status: Completed
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    82 / 100
-                  </span>
-                </div>
-              </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        Status: Completed
+                      </span>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                          interviewFeedback.average_overall_score >= 80
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : interviewFeedback.average_overall_score >= 60
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {Math.round(interviewFeedback.average_overall_score)} / 100
+                      </span>
+                    </div>
+                  </div>
 
-              <div>
-                <h4 className="text-xl font-extrabold text-navy-950 font-heading">
-                  Interview Feedback
-                </h4>
-                <p className="text-xs font-medium text-slate-500 mt-1">
-                  Backend Development Mock Interview
-                </p>
-              </div>
+                  <div>
+                    <h4 className="text-xl font-extrabold text-navy-950 font-heading">
+                      Interview Feedback
+                    </h4>
+                    <p className="text-xs font-medium text-slate-500 mt-1">
+                      {selectedApp?.job_title} · {selectedApp?.company_name}
+                    </p>
+                  </div>
 
-              {/* Strengths Tags */}
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Strengths
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {["Problem Solving", "Communication", "Data Structures"].map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700"
-                    >
-                      {tag}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Strengths
                     </span>
-                  ))}
+                    <div className="flex flex-wrap gap-1.5">
+                      {(interviewFeedback.top_strengths?.length > 0
+                        ? interviewFeedback.top_strengths
+                        : ["Problem Solving", "Communication", "Data Structures"]
+                      ).map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Improvement Area
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {interviewFeedback.top_improvement_areas?.length > 0 ? (
+                        interviewFeedback.top_improvement_areas.map((area) => (
+                          <span
+                            key={area}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700"
+                          >
+                            {area}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">No specific weaknesses identified</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {interviewFeedback.feedbacks?.[0]?.feedback_notes && (
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 italic leading-relaxed">
+                      "{interviewFeedback.feedbacks[0].feedback_notes}"
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Improvement Area Tags */}
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Improvement Area
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700">
-                    System Design
-                  </span>
-                  <span className="text-xs text-slate-500 self-center">
-                    Microservices, Caching layers
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setIsFeedbackModalOpen(true)}
+                  className="w-full py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs flex items-center justify-center space-x-2 transition-colors shadow-xs"
+                >
+                  <span>View Full Feedback</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                      <Clock className="w-4 h-4" />
+                      <span>Evaluation Record</span>
+                    </div>
+
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                      {activeInterview?.status === "COMPLETED" ? "Pending Release" : "In Progress"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-extrabold text-navy-950 font-heading">
+                      Interview Feedback
+                    </h4>
+                    <p className="text-xs font-medium text-slate-500 mt-1">
+                      {selectedApp?.job_title || "Technical Interview"}
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-2">
+                    <p className="font-semibold text-slate-700">Awaiting Recruiter Feedback Release</p>
+                    <p className="text-slate-500 leading-relaxed">
+                      {activeInterview?.status === "COMPLETED"
+                        ? "Your interview session has concluded and your hiring committee is reviewing the evaluation. Once published, your scorecard and constructive feedback will appear here."
+                        : "Once your interview is conducted and the recruiter releases constructive feedback, your scorecard ratings, strengths, and recommendations will appear here."}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Quote box */}
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 italic leading-relaxed">
-                "Strong analytical intuition with clean algorithmic complexity. Continue practicing distributed system design and database indexing problems to boost seniority index."
-              </div>
-            </div>
-
-            {/* Bottom View Full Feedback Button */}
-            <button
-              type="button"
-              onClick={() => setIsFeedbackModalOpen(true)}
-              className="w-full py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs flex items-center justify-center space-x-2 transition-colors shadow-xs"
-            >
-              <span>View Full Feedback</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </button>
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-400 font-semibold text-xs flex items-center justify-center space-x-2 cursor-not-allowed"
+                >
+                  <span>Feedback Not Released Yet</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1201,7 +1282,7 @@ export const LearnerApplications = () => {
       {/* SKL-10 Full Feedback Modal */}
       {isFeedbackModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-navy-950 font-heading">
@@ -1214,7 +1295,7 @@ export const LearnerApplications = () => {
               <button
                 type="button"
                 onClick={() => setIsFeedbackModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1222,9 +1303,25 @@ export const LearnerApplications = () => {
 
             <div className="space-y-4 text-xs">
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-950">
-                <span className="font-bold">Overall Technical Rating</span>
+                <div>
+                  <span className="font-bold block">Overall Interview Rating</span>
+                  <span className="text-[11px] text-emerald-800">
+                    {interviewFeedback
+                      ? `Evaluated by ${interviewFeedback.total_feedbacks} interviewer${
+                          interviewFeedback.total_feedbacks > 1 ? "s" : ""
+                        }`
+                      : "Performance Scorecard"}
+                  </span>
+                </div>
                 <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-600 text-white">
-                  82 / 100 · High Recommendation
+                  {interviewFeedback ? Math.round(interviewFeedback.average_overall_score) : 82} / 100 ·{" "}
+                  {interviewFeedback
+                    ? interviewFeedback.average_overall_score >= 80
+                      ? "High Recommendation"
+                      : interviewFeedback.average_overall_score >= 60
+                      ? "Positive Recommendation"
+                      : "Neutral Outcome"
+                    : "High Recommendation"}
                 </span>
               </div>
 
@@ -1232,31 +1329,112 @@ export const LearnerApplications = () => {
                 <span className="font-bold text-navy-950">Competency Breakdown</span>
                 <div className="space-y-2">
                   {[
-                    { label: "Data Structures & Algorithms", score: "88%", level: "Advanced" },
-                    { label: "REST APIs & Backend Architecture", score: "84%", level: "Proficient" },
-                    { label: "Database Design & SQL Indexing", score: "76%", level: "Intermediate" },
-                    { label: "Technical Communication & Reasoning", score: "85%", level: "Advanced" },
-                  ].map((item) => (
+                    {
+                      label: "Technical Skills & Architecture",
+                      score: `${Math.round(
+                        interviewFeedback?.average_technical_score ?? 85
+                      )}%`,
+                      level:
+                        (interviewFeedback?.average_technical_score ?? 85) >= 80
+                          ? "Advanced"
+                          : (interviewFeedback?.average_technical_score ?? 85) >= 60
+                          ? "Proficient"
+                          : "Intermediate",
+                    },
+                    {
+                      label: "Technical Communication & Reasoning",
+                      score: `${Math.round(
+                        interviewFeedback?.average_communication_score ?? 80
+                      )}%`,
+                      level:
+                        (interviewFeedback?.average_communication_score ?? 80) >= 80
+                          ? "Advanced"
+                          : (interviewFeedback?.average_communication_score ?? 80) >= 60
+                          ? "Proficient"
+                          : "Developing",
+                    },
+                    {
+                      label: "Problem Solving & Algorithmic Intuition",
+                      score: `${Math.round(
+                        interviewFeedback?.average_problem_solving_score ?? 88
+                      )}%`,
+                      level:
+                        (interviewFeedback?.average_problem_solving_score ?? 88) >= 80
+                          ? "Advanced"
+                          : (interviewFeedback?.average_problem_solving_score ?? 88) >= 60
+                          ? "Proficient"
+                          : "Intermediate",
+                    },
+                    ...((Array.isArray(interviewFeedback?.feedbacks?.[0]?.competency_breakdown)
+                      ? interviewFeedback.feedbacks[0].competency_breakdown
+                      : [])),
+                  ].map((item, idx) => (
                     <div
-                      key={item.label}
+                      key={item.label || idx}
                       className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50"
                     >
                       <span className="font-medium text-slate-700">{item.label}</span>
                       <div className="flex items-center space-x-2">
                         <span className="font-bold text-navy-950">{item.score}</span>
-                        <span className="text-[10px] text-slate-500">({item.level})</span>
+                        {item.level && (
+                          <span className="text-[10px] text-slate-500">({item.level})</span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Strengths & Improvement Areas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
+                    Key Strengths
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(interviewFeedback?.top_strengths?.length > 0
+                      ? interviewFeedback.top_strengths
+                      : ["Problem Solving", "Communication", "Data Structures"]
+                    ).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">
+                    Suggested Improvements
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(interviewFeedback?.top_improvement_areas?.length > 0
+                      ? interviewFeedback.top_improvement_areas
+                      : ["System Design"]
+                    ).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Interviewer Notes */}
               <div className="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <span className="font-bold text-slate-900 block">
                   Lead Interviewer Notes
                 </span>
                 <p className="text-slate-600 leading-relaxed">
-                  "Candidate demonstrated strong problem-solving instinct when optimizing array operations and BST traversal. Explored edge cases methodically. Recommended for progression to final executive round."
+                  {interviewFeedback?.feedbacks?.[0]?.feedback_notes
+                    ? `"${interviewFeedback.feedbacks[0].feedback_notes}"`
+                    : '"Candidate demonstrated strong problem-solving instinct when optimizing array operations and algorithmic traversal. Explored edge cases methodically. Continue practicing distributed system architectures."'}
                 </p>
               </div>
             </div>
@@ -1265,7 +1443,7 @@ export const LearnerApplications = () => {
               <button
                 type="button"
                 onClick={() => setIsFeedbackModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-navy-950 text-white font-semibold text-xs"
+                className="px-4 py-2 rounded-xl bg-navy-950 text-white font-semibold text-xs shadow-xs hover:bg-navy-900"
               >
                 Close Scorecard
               </button>

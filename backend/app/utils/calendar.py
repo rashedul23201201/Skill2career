@@ -115,3 +115,6 @@ def generate_ics_calendar(interview: Any) -> str:
     lines.append("")
 
     return "\r\n".join(lines)
+
+
+generate_interview_ics = generate_ics_calendar

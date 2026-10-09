@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, func, desc, or_
 from datetime import datetime, timezone
 
-from app.models.interview import InterviewRequest, InterviewSlot, InterviewStatus
+from app.models.interview import InterviewRequest, InterviewSlot, InterviewStatus, InterviewFeedback
+from app.models.audit_log import AuditLog
 
 
 class InterviewRepository:
@@ -139,3 +140,83 @@ class InterviewRepository:
     def delete(self, db: Session, instance: InterviewRequest) -> None:
         db.delete(instance)
         db.commit()
+
+    def create_feedback(self, db: Session, feedback: InterviewFeedback) -> InterviewFeedback:
+        db.add(feedback)
+        db.commit()
+        db.refresh(feedback)
+        return feedback
+
+    def get_feedback_by_id(self, db: Session, feedback_id: int) -> Optional[InterviewFeedback]:
+        stmt = (
+            select(InterviewFeedback)
+            .where(InterviewFeedback.id == feedback_id)
+            .options(
+                joinedload(InterviewFeedback.interviewer),
+                joinedload(InterviewFeedback.interview_request),
+                joinedload(InterviewFeedback.application),
+            )
+        )
+        return db.execute(stmt).unique().scalar_one_or_none()
+
+    def get_feedback_by_interviewer(
+        self, db: Session, interview_id: int, interviewer_id: int
+    ) -> Optional[InterviewFeedback]:
+        stmt = (
+            select(InterviewFeedback)
+            .where(
+                InterviewFeedback.interview_id == interview_id,
+                InterviewFeedback.interviewer_id == interviewer_id,
+            )
+            .options(
+                joinedload(InterviewFeedback.interviewer),
+                joinedload(InterviewFeedback.interview_request),
+            )
+        )
+        return db.execute(stmt).unique().scalar_one_or_none()
+
+    def get_feedbacks_by_interview_id(
+        self, db: Session, interview_id: int, only_shared: bool = False
+    ) -> List[InterviewFeedback]:
+        stmt = select(InterviewFeedback).where(InterviewFeedback.interview_id == interview_id)
+        if only_shared:
+            stmt = stmt.where(InterviewFeedback.is_shared_with_candidate == True)
+        stmt = stmt.order_by(desc(InterviewFeedback.created_at)).options(
+            joinedload(InterviewFeedback.interviewer),
+            joinedload(InterviewFeedback.interview_request),
+        )
+        return list(db.execute(stmt).unique().scalars().all())
+
+    def get_feedbacks_by_application_id(
+        self, db: Session, application_id: int, only_shared: bool = False
+    ) -> List[InterviewFeedback]:
+        stmt = select(InterviewFeedback).where(InterviewFeedback.application_id == application_id)
+        if only_shared:
+            stmt = stmt.where(InterviewFeedback.is_shared_with_candidate == True)
+        stmt = stmt.order_by(desc(InterviewFeedback.created_at)).options(
+            joinedload(InterviewFeedback.interviewer),
+            joinedload(InterviewFeedback.interview_request),
+        )
+        return list(db.execute(stmt).unique().scalars().all())
+
+    def save_feedback(self, db: Session, feedback: InterviewFeedback) -> InterviewFeedback:
+        db.add(feedback)
+        db.commit()
+        db.refresh(feedback)
+        return feedback
+
+    def delete_feedback(self, db: Session, feedback: InterviewFeedback) -> None:
+        db.delete(feedback)
+        db.commit()
+
+    def list_feedback_audit_logs(
+        self, db: Session, interview_id: Optional[int] = None, limit: int = 50, offset: int = 0
+    ) -> Tuple[List[AuditLog], int]:
+        stmt = select(AuditLog).where(AuditLog.action.like("%INTERVIEW_FEEDBACK%"))
+        count_stmt = select(func.count(AuditLog.id)).where(AuditLog.action.like("%INTERVIEW_FEEDBACK%"))
+        if interview_id:
+            stmt = stmt.where(AuditLog.details["interview_id"].as_integer() == interview_id)
+            count_stmt = count_stmt.where(AuditLog.details["interview_id"].as_integer() == interview_id)
+        total = db.scalar(count_stmt) or 0
+        items = list(db.execute(stmt.order_by(desc(AuditLog.created_at)).offset(offset).limit(limit)).scalars().all())
+        return items, total
