@@ -12,6 +12,7 @@ from app.routers.mock_test import router as mock_test_router
 from app.routers.screening import router as screening_router
 from app.routers.attempt import router as attempt_router
 from app.routers.forum import router as forum_router
+from app.routers.interview import router as interview_router
 from app.routers.api_router import api_router
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "screening_router",
     "attempt_router",
     "forum_router",
+    "interview_router",
     "api_router",
 ]

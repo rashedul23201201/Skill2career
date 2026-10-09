@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import courseService from "../../services/courseService";
 import learnerService from "../../services/learnerService";
 import applicationService from "../../services/applicationService";
+import interviewService from "../../services/interviewService";
 import { ROUTES } from "../../constants";
 import {
   BookOpen,
@@ -33,6 +34,7 @@ export const LearnerCandidateDashboard = () => {
     items: [],
     total: 0,
   });
+  const [latestInterview, setLatestInterview] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,13 +43,18 @@ export const LearnerCandidateDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [profileRes, enrolledRes, appsRes] = await Promise.allSettled([
+        const [profileRes, enrolledRes, appsRes, interviewRes] = await Promise.allSettled([
           learnerService.getProfile(),
           courseService.getEnrolledCourses(),
           applicationService.getMyApplications({ size: 5 }),
+          interviewService.getMyInterviews({ size: 1 }),
         ]);
 
         if (!isMounted) return;
+
+        if (interviewRes.status === "fulfilled" && interviewRes.value?.data?.items?.length > 0) {
+          setLatestInterview(interviewRes.value.data.items[0]);
+        }
 
         if (profileRes.status === "fulfilled" && profileRes.value) {
           setProfile(profileRes.value);
@@ -325,16 +332,16 @@ export const LearnerCandidateDashboard = () => {
                 Interview Schedule
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
-                Technical Interview
+                {latestInterview?.interview_type || "Technical Interview"}
               </span>
             </div>
 
             <div>
               <h3 className="text-xl font-extrabold text-navy-950 font-heading">
-                Junior Software Developer
+                {latestInterview?.job_title || "Junior Software Developer"}
               </h3>
               <p className="text-sm font-semibold text-slate-600 mt-1">
-                Brain Station 23
+                {latestInterview?.company_name || "Brain Station 23"}
               </p>
             </div>
 
@@ -345,10 +352,18 @@ export const LearnerCandidateDashboard = () => {
               </div>
               <div>
                 <p className="text-sm font-bold text-navy-950">
-                  Tomorrow · 3:00 PM (BST)
+                  {latestInterview?.scheduled_at
+                    ? new Date(latestInterview.scheduled_at).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "Tomorrow · 3:00 PM (BST)"}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Live Coding round via Google Meet
+                  {latestInterview?.meeting_platform || "Live Coding round via Google Meet"}
                 </p>
               </div>
             </div>
@@ -361,7 +376,7 @@ export const LearnerCandidateDashboard = () => {
             </div>
 
             <Link
-              to={ROUTES.JOBS || "/jobs"}
+              to={ROUTES.LEARNER_APPLICATIONS || "/learner/applications"}
               className="inline-flex items-center space-x-1 text-xs font-bold text-navy-950 hover:text-blue-600 transition-colors"
             >
               <span>View Details</span>
