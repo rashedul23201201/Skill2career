@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import jobService from "../services/jobService";
 import screeningService from "../services/screeningService";
+import applicationService from "../services/applicationService";
+import learnerService from "../services/learnerService";
 import { ROUTES, USER_ROLES } from "../constants";
 import {
   ArrowLeft,
@@ -20,6 +22,10 @@ import {
   X,
   Sparkles,
   Send,
+  FileText,
+  UploadCloud,
+  FileCheck,
+  AlertCircle,
 } from "lucide-react";
 
 export const JobDetails = () => {
@@ -33,6 +39,19 @@ export const JobDetails = () => {
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
+
+  const [hasApplied, setHasApplied] = useState(false);
+  const [existingApplication, setExistingApplication] = useState(null);
+  const [learnerProfile, setLearnerProfile] = useState(null);
+  const [applyForm, setApplyForm] = useState({
+    use_profile_resume: true,
+    resume_file: null,
+    cover_letter: "",
+    screening_answers: {},
+  });
+  const [applySubmitting, setApplySubmitting] = useState(false);
+  const [applySuccess, setApplySuccess] = useState(false);
+  const [applyError, setApplyError] = useState(null);
 
   // Tabs: "overview" | "screening"
   const [activeTab, setActiveTab] = useState(
@@ -90,26 +109,53 @@ export const JobDetails = () => {
     }
   };
 
-  const fetchScreeningData = async () => {
+  const checkUserApplication = async () => {
+    if (!id || !user) return;
+    try {
+      const res = await applicationService.checkApplicationStatus(id);
+      if (res?.data?.has_applied) {
+        setHasApplied(true);
+        setExistingApplication(res.data.application);
+      } else {
+        setHasApplied(false);
+        setExistingApplication(null);
+      }
+    } catch (err) {
+      console.error("Error checking application status:", err);
+    }
+  };
+
+  const fetchQuestionsOnly = async () => {
     if (!id) return;
     try {
-      const [questionsRes, applicantsRes] = await Promise.all([
-        screeningService.getScreeningQuestions(id),
-        screeningService.getApplicants(id, {
-          deal_breaker_passed:
-            statusFilter === "PASSED" ? true : statusFilter === "DISQUALIFIED" ? false : undefined,
-        }),
-      ]);
-      if (questionsRes?.data) setScreeningQuestions(questionsRes.data);
-      if (applicantsRes?.data) setApplicantsData(applicantsRes.data);
+      const res = await screeningService.getScreeningQuestions(id);
+      if (res?.data) {
+        setScreeningQuestions(res.data);
+      }
     } catch (err) {
-      console.error("Failed to load vacancy screening data:", err);
+      console.error("Failed to load screening questions:", err);
     }
   };
 
   useEffect(() => {
     fetchJobData();
-  }, [id]);
+    fetchQuestionsOnly();
+    if (user) {
+      checkUserApplication();
+    }
+  }, [id, user]);
+
+  useEffect(() => {
+    if (user?.role === USER_ROLES.LEARNER) {
+      learnerService
+        .getProfile()
+        .then((res) => {
+          if (res?.data) setLearnerProfile(res.data);
+          else if (res) setLearnerProfile(res);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     if (canManage) {
@@ -404,10 +450,44 @@ export const JobDetails = () => {
                   : `Screen Candidates (${applicantsData.total ?? 0})`}
               </span>
             </button>
+          ) : hasApplied ? (
+            <div className="space-y-2">
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-0.5">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                  ✓ Application Active
+                </span>
+                <span className="text-xs font-semibold text-emerald-950 block">
+                  Stage: {existingApplication?.status ? existingApplication.status.replace("_", " ") : "SUBMITTED"}
+                </span>
+              </div>
+              <Link
+                to={ROUTES.LEARNER_APPLICATIONS || "/learner/applications"}
+                className="w-full py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-2"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Track Application</span>
+              </Link>
+            </div>
+          ) : job.status !== "ACTIVE" ? (
+            <button
+              type="button"
+              disabled
+              className="w-full py-2.5 rounded-xl bg-slate-200 text-slate-500 font-semibold text-xs cursor-not-allowed text-center"
+            >
+              Applications Closed
+            </button>
           ) : (
             <button
               type="button"
-              onClick={() => setApplyModalOpen(true)}
+              onClick={() => {
+                if (!user) {
+                  navigate(ROUTES.LOGIN, { state: { from: location.pathname } });
+                  return;
+                }
+                setApplySuccess(false);
+                setApplyError(null);
+                setApplyModalOpen(true);
+              }}
               className="w-full py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-sm transition-all text-center"
             >
               Apply to Vacancy
@@ -1221,26 +1301,326 @@ export const JobDetails = () => {
         </div>
       )}
 
-      {/* Application Notice Modal (for non-company candidates) */}
+      {/* Interactive Job Application Modal (SKL-7) */}
       {applyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 shadow-xl text-center">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-              <Briefcase className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-navy-950 font-heading">
-              Apply to {job.title}
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Direct resume submission with custom screening questions is part of Sprint 2 Ticket <strong>SKL-7: Job Application & Tracking</strong> (assigned to Saif).
-            </p>
-            <button
-              type="button"
-              onClick={() => setApplyModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-navy-950 text-white font-semibold text-xs"
-            >
-              Close
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 sm:p-7 space-y-6 shadow-2xl my-8">
+            {applySuccess ? (
+              <div className="text-center py-6 space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-extrabold text-navy-950 font-heading">
+                    Application Submitted Successfully!
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                    Your resume and screening responses have been submitted to{" "}
+                    <strong className="text-navy-900">{job.company_name}</strong>. You can monitor your hiring status in real-time.
+                  </p>
+                </div>
+
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    to={ROUTES.LEARNER_APPLICATIONS || "/learner/applications"}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-xs"
+                  >
+                    Track in My Applications
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setApplyModalOpen(false)}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setApplyError(null);
+
+                  for (const q of screeningQuestions) {
+                    if (q.is_required) {
+                      const ans = applyForm.screening_answers[q.id];
+                      if (ans === undefined || ans === null || String(ans).trim() === "") {
+                        setApplyError(`Please provide an answer for required question: "${q.question_text}"`);
+                        return;
+                      }
+                    }
+                  }
+
+                  if (!applyForm.use_profile_resume && !applyForm.resume_file) {
+                    setApplyError("Please select a resume file (PDF or DOCX, max 5MB).");
+                    return;
+                  }
+
+                  if (applyForm.use_profile_resume && !learnerProfile?.resume_url) {
+                    setApplyError("No resume found in your learner profile. Please upload a resume document below.");
+                    return;
+                  }
+
+                  try {
+                    setApplySubmitting(true);
+                    let res;
+                    if (applyForm.resume_file) {
+                      const fd = new FormData();
+                      fd.append("resume_file", applyForm.resume_file);
+                      fd.append("cover_letter", applyForm.cover_letter || "");
+                      fd.append("use_profile_resume", "false");
+                      fd.append("screening_answers", JSON.stringify(applyForm.screening_answers || {}));
+                      res = await applicationService.applyToJob(job.id, fd, true);
+                    } else {
+                      const payload = {
+                        use_profile_resume: true,
+                        cover_letter: applyForm.cover_letter || "",
+                        screening_answers: applyForm.screening_answers || {},
+                      };
+                      res = await applicationService.applyToJob(job.id, payload, false);
+                    }
+
+                    if (res?.data) {
+                      setApplySuccess(true);
+                      setHasApplied(true);
+                      setExistingApplication(res.data);
+                      setJob((prev) => prev ? { ...prev, applications_count: (prev.applications_count || 0) + 1 } : prev);
+                    }
+                  } catch (err) {
+                    console.error("Application submission failed:", err);
+                    setApplyError(err.response?.data?.message || "Failed to submit application. Please check your inputs.");
+                  } finally {
+                    setApplySubmitting(false);
+                  }
+                }}
+                className="space-y-5"
+              >
+                {/* Modal Header */}
+                <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
+                      Application Submission · SKL-7
+                    </span>
+                    <h3 className="text-lg font-bold text-navy-950 font-heading">
+                      Apply to {job.title}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {job.company_name} · {job.location} · {job.work_mode}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setApplyModalOpen(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Error Banner */}
+                {applyError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                    <span>{applyError}</span>
+                  </div>
+                )}
+
+                {/* Section 1: Resume Selection */}
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-navy-950 uppercase tracking-wider">
+                    Curriculum Vitae (Resume) Attachment
+                  </label>
+
+                  {learnerProfile?.resume_url ? (
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-3 p-3 rounded-xl border border-blue-200 bg-blue-50/50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="resume_choice"
+                          checked={applyForm.use_profile_resume}
+                          onChange={() => setApplyForm({ ...applyForm, use_profile_resume: true, resume_file: null })}
+                          className="text-blue-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-bold text-navy-950">
+                              Use Profile Resume
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              ✓ Verified
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-500 truncate block">
+                            {learnerProfile.resume_filename || "Profile_Resume.pdf"}
+                          </span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center space-x-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="resume_choice"
+                          checked={!applyForm.use_profile_resume}
+                          onChange={() => setApplyForm({ ...applyForm, use_profile_resume: false })}
+                          className="text-blue-600"
+                        />
+                        <span className="text-xs font-semibold text-slate-700">
+                          Upload a different resume document (PDF / DOCX, max 5MB)
+                        </span>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                      No resume uploaded on your profile. Please upload a PDF or DOCX resume document below.
+                    </div>
+                  )}
+
+                  {(!applyForm.use_profile_resume || !learnerProfile?.resume_url) && (
+                    <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center space-y-2">
+                      <UploadCloud className="w-6 h-6 text-slate-400 mx-auto" />
+                      <div>
+                        <input
+                          type="file"
+                          id="modal_resume_file"
+                          accept=".pdf,.docx,.doc"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setApplyForm({ ...applyForm, use_profile_resume: false, resume_file: file });
+                          }}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="modal_resume_file"
+                          className="inline-block px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer shadow-2xs"
+                        >
+                          Browse Document
+                        </label>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {applyForm.resume_file
+                          ? `Selected: ${applyForm.resume_file.name} (${Math.round(applyForm.resume_file.size / 1024)} KB)`
+                          : "Accepted formats: PDF or DOCX (maximum file size 5MB)"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 2: Custom Screening Questions */}
+                {screeningQuestions.length > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-navy-950 uppercase tracking-wider">
+                        Screening Questions ({screeningQuestions.length})
+                      </label>
+                      <span className="text-[10px] text-slate-400">
+                        Answers evaluated automatically
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                      {screeningQuestions.map((q) => (
+                        <div key={q.id} className="space-y-1 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
+                          <label className="block text-xs font-semibold text-slate-800">
+                            {q.question_text}
+                            {q.is_required && <span className="text-rose-600 ml-0.5">*</span>}
+                            {q.is_deal_breaker && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                Deal-Breaker
+                              </span>
+                            )}
+                          </label>
+
+                          {q.question_type === "YES_NO" ? (
+                            <select
+                              required={q.is_required}
+                              value={applyForm.screening_answers[q.id] ?? ""}
+                              onChange={(e) =>
+                                setApplyForm({
+                                  ...applyForm,
+                                  screening_answers: { ...applyForm.screening_answers, [q.id]: e.target.value },
+                                })
+                              }
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                            >
+                              <option value="">Select option</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          ) : q.question_type === "MULTIPLE_CHOICE" && Array.isArray(q.options) && q.options.length > 0 ? (
+                            <select
+                              required={q.is_required}
+                              value={applyForm.screening_answers[q.id] ?? ""}
+                              onChange={(e) =>
+                                setApplyForm({
+                                  ...applyForm,
+                                  screening_answers: { ...applyForm.screening_answers, [q.id]: e.target.value },
+                                })
+                              }
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                            >
+                              <option value="">Select option</option>
+                              {q.options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              required={q.is_required}
+                              placeholder={q.question_type === "NUMERIC" ? "e.g. 2" : "Type your answer..."}
+                              value={applyForm.screening_answers[q.id] ?? ""}
+                              onChange={(e) =>
+                                setApplyForm({
+                                  ...applyForm,
+                                  screening_answers: { ...applyForm.screening_answers, [q.id]: e.target.value },
+                                })
+                              }
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 3: Optional Cover Letter */}
+                <div className="space-y-1.5 pt-3 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-navy-950 uppercase tracking-wider">
+                    Cover Note (Optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Briefly highlight relevant experiences, certifications, or projects that make you a great fit..."
+                    value={applyForm.cover_letter}
+                    onChange={(e) => setApplyForm({ ...applyForm, cover_letter: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:outline-hidden focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Footer Actions */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setApplyModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={applySubmitting}
+                    className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-sm transition-all"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{applySubmitting ? "Submitting Application..." : "Submit Application"}</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

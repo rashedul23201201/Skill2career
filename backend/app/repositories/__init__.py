@@ -11,6 +11,7 @@ from app.repositories.instructor_repository import InstructorRepository
 from app.repositories.mock_test_repository import MockTestRepository
 from app.repositories.screening_repository import ScreeningRepository
 from app.repositories.forum_repository import ForumRepository
+from app.repositories.application_repository import ApplicationRepository
 
 __all__ = [
     "UserRepository",
@@ -24,4 +25,5 @@ __all__ = [
     "MockTestRepository",
     "ScreeningRepository",
     "ForumRepository",
+    "ApplicationRepository",
 ]

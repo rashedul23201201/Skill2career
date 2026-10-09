@@ -17,6 +17,7 @@ import CompanyVerifications from "../pages/admin/CompanyVerifications";
 import LearnerProfile from "../pages/learner/LearnerProfile";
 import { CompanyDashboard, CompanyPublicProfile } from "../pages/company";
 import CompanyVerification from "../pages/company/CompanyVerification";
+import LearnerApplications from "../pages/learner/LearnerApplications";
 import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 import InstructorApply from "../pages/instructor/InstructorApply";
 import Jobs from "../pages/Jobs";
@@ -208,6 +209,22 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
               <LearnerProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.LEARNER_APPLICATIONS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerApplications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.APPLICATIONS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerApplications />
             </ProtectedRoute>
           }
         />

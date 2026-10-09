@@ -18,6 +18,8 @@ from app.models.screening import (
     DealBreakerRule,
     CandidateStatus,
 )
+from app.models.application import JobApplication, ApplicationStatus
+from sqlalchemy import select
 from app.repositories.job_repository import JobRepository
 from app.repositories.screening_repository import ScreeningRepository
 from app.repositories.audit_log_repository import AuditLogRepository
@@ -382,6 +384,25 @@ class ScreeningService:
         evaluation.status = status.upper()
         evaluation.reviewed_by = current_user.id
         evaluation.reviewed_at = evaluation.updated_at
+
+        if evaluation.candidate_id:
+            app_stmt = select(JobApplication).where(
+                JobApplication.job_id == evaluation.job_id,
+                JobApplication.learner_id == evaluation.candidate_id,
+            )
+            job_app = db.execute(app_stmt).scalars().first()
+            if job_app:
+                status_upper = status.upper()
+                if status_upper == CandidateStatus.SHORTLISTED.value:
+                    job_app.status = ApplicationStatus.SHORTLISTED.value
+                elif status_upper == CandidateStatus.DISQUALIFIED.value:
+                    job_app.status = ApplicationStatus.REJECTED.value
+                elif status_upper == CandidateStatus.UNDER_REVIEW.value:
+                    job_app.status = ApplicationStatus.UNDER_REVIEW.value
+                elif status_upper == CandidateStatus.APPLIED.value:
+                    job_app.status = ApplicationStatus.SUBMITTED.value
+                job_app.reviewed_by = current_user.id
+                job_app.reviewed_at = evaluation.updated_at
 
         updated = self.screening_repo.update_evaluation(db=db, evaluation=evaluation)
         return CandidateEvaluationResponse.model_validate(updated)

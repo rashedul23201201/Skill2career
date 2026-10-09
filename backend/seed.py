@@ -20,6 +20,7 @@ from app.models.screening import (
 )
 from app.models.forum import ForumCategory, ForumPost, ForumComment
 from app.models.enrollment import CourseEnrollment, LessonProgress, EnrollmentStatus
+from app.models.application import JobApplication, ApplicationStatus
 from app.core.security import hash_password
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -155,6 +156,8 @@ def seed_database():
                         institution=profile_data["institution"],
                         department=profile_data["department"],
                         target_role=profile_data["target_role"],
+                        resume_url="/uploads/resumes/Tanvir_Hasan_Resume.pdf",
+                        resume_filename="Tanvir_Hasan_Resume.pdf",
                         completion_pct=85,
                     )
                     db.add(profile)
@@ -1392,6 +1395,57 @@ def seed_database():
                         db.add(lp)
             db.commit()
             logger.info("Successfully seeded course enrollments and progress for sample learner.")
+
+            # Seed sample job applications for learner
+            jobs = list(db.execute(select(JobPosting).order_by(JobPosting.id.asc())).scalars().all())
+            if jobs:
+                first_job = jobs[0]
+                existing_app = db.execute(
+                    select(JobApplication).where(
+                        JobApplication.learner_id == learner_user.id,
+                        JobApplication.job_id == first_job.id,
+                    )
+                ).scalar_one_or_none()
+                if not existing_app:
+                    app1 = JobApplication(
+                        job_id=first_job.id,
+                        learner_id=learner_user.id,
+                        resume_url="/uploads/resumes/Tanvir_Hasan_Resume.pdf",
+                        resume_filename="Tanvir_Hasan_Resume.pdf",
+                        cover_letter="I am passionate about building robust backend architectures and scalable frontend applications.",
+                        screening_answers={"1": "Yes", "2": "3", "3": "React, Python, FastAPI"},
+                        screening_score=88,
+                        deal_breaker_passed=True,
+                        status=ApplicationStatus.SHORTLISTED.value,
+                    )
+                    db.add(app1)
+                    first_job.applications_count = (first_job.applications_count or 0) + 1
+
+                if len(jobs) > 1:
+                    second_job = jobs[1]
+                    existing_app2 = db.execute(
+                        select(JobApplication).where(
+                            JobApplication.learner_id == learner_user.id,
+                            JobApplication.job_id == second_job.id,
+                        )
+                    ).scalar_one_or_none()
+                    if not existing_app2:
+                        app2 = JobApplication(
+                            job_id=second_job.id,
+                            learner_id=learner_user.id,
+                            resume_url="/uploads/resumes/Tanvir_Hasan_Resume.pdf",
+                            resume_filename="Tanvir_Hasan_Resume.pdf",
+                            cover_letter="Looking forward to contributing to machine learning and cloud pipelines.",
+                            screening_answers={},
+                            screening_score=75,
+                            deal_breaker_passed=True,
+                            status=ApplicationStatus.UNDER_REVIEW.value,
+                        )
+                        db.add(app2)
+                        second_job.applications_count = (second_job.applications_count or 0) + 1
+
+                db.commit()
+                logger.info("Successfully seeded job applications for sample learner.")
 
     except Exception as e:
         db.rollback()

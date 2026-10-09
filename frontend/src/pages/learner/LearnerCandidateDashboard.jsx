@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import courseService from "../../services/courseService";
 import learnerService from "../../services/learnerService";
+import applicationService from "../../services/applicationService";
 import { ROUTES } from "../../constants";
 import {
   BookOpen,
@@ -28,6 +29,10 @@ export const LearnerCandidateDashboard = () => {
     total: 0,
     average_progress: 0,
   });
+  const [applicationsData, setApplicationsData] = useState({
+    items: [],
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,9 +41,10 @@ export const LearnerCandidateDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [profileRes, enrolledRes] = await Promise.allSettled([
+        const [profileRes, enrolledRes, appsRes] = await Promise.allSettled([
           learnerService.getProfile(),
           courseService.getEnrolledCourses(),
+          applicationService.getMyApplications({ size: 5 }),
         ]);
 
         if (!isMounted) return;
@@ -49,6 +55,13 @@ export const LearnerCandidateDashboard = () => {
 
         if (enrolledRes.status === "fulfilled" && enrolledRes.value) {
           setEnrollmentData(enrolledRes.value);
+        }
+
+        if (appsRes.status === "fulfilled" && appsRes.value?.data) {
+          setApplicationsData({
+            items: appsRes.value.data.items || [],
+            total: appsRes.value.data.total || 0,
+          });
         }
       } catch (err) {
         console.error("Failed to load candidate dashboard data:", err);
@@ -229,19 +242,22 @@ export const LearnerCandidateDashboard = () => {
         </div>
 
         {/* Metric 4: Applications */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+        <Link
+          to={ROUTES.LEARNER_APPLICATIONS || "/learner/applications"}
+          className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex items-center justify-between hover:border-slate-300 transition-colors group"
+        >
           <div>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold text-slate-500 group-hover:text-blue-600 transition-colors">
               Applications
             </span>
             <h3 className="text-3xl font-extrabold text-navy-950 font-heading mt-2">
-              8
+              {applicationsData.total}
             </h3>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
             <Briefcase className="w-5 h-5" />
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Middle Row: Active Curriculum & Interview Schedule */}
@@ -388,34 +404,39 @@ export const LearnerCandidateDashboard = () => {
         </div>
 
         {/* Right: Job Application Shortlisted */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h4 className="text-sm font-bold text-navy-950 font-heading">
-                  Junior Software Developer
-                </h4>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Shortlisted
-                </span>
+        {(() => {
+          const recentApp = applicationsData.items[0];
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-sm font-bold text-navy-950 font-heading">
+                      {recentApp?.job_title || "Junior Software Developer"}
+                    </h4>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {recentApp?.status ? recentApp.status.replace("_", " ") : "Shortlisted"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {recentApp?.company_name || "Brain Station 23"} · {recentApp?.applied_at ? `Applied ${new Date(recentApp.applied_at).toLocaleDateString()}` : "Active Application"}
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Brain Station 23 · Applied 4 days ago
-              </p>
-            </div>
-          </div>
 
-          <Link
-            to={ROUTES.JOBS || "/jobs"}
-            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
-          >
-            <span>View Application</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+              <Link
+                to={ROUTES.LEARNER_APPLICATIONS || "/learner/applications"}
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+              >
+                <span>View Application</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bottom Row: Career Profile Summary */}
