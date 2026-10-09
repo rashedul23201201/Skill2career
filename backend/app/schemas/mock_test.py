@@ -22,6 +22,8 @@ class TestQuestionCreate(BaseModel):
     marks: int = Field(default=1, ge=1, le=100, description="Score awarded for correct answer")
     explanation: Optional[str] = Field(default=None, description="Detailed explanation of the solution")
     order_index: int = Field(default=0, ge=0, description="Display order index")
+    topic: Optional[str] = Field(default=None, max_length=100, description="Question topic / sub-domain")
+    difficulty: Optional[str] = Field(default=None, max_length=50, description="Difficulty level e.g. Easy, Medium, Hard")
 
     model_config = ConfigDict(extra="ignore")
 
@@ -34,6 +36,8 @@ class TestQuestionUpdate(BaseModel):
     marks: Optional[int] = Field(default=None, ge=1, le=100)
     explanation: Optional[str] = None
     order_index: Optional[int] = Field(default=None, ge=0)
+    topic: Optional[str] = Field(default=None, max_length=100)
+    difficulty: Optional[str] = Field(default=None, max_length=50)
 
     model_config = ConfigDict(extra="ignore")
 
@@ -48,6 +52,8 @@ class TestQuestionResponse(BaseModel):
     marks: int = 1
     explanation: Optional[str] = None
     order_index: int = 0
+    topic: Optional[str] = None
+    difficulty: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -193,4 +199,69 @@ class TestAttemptResponse(BaseModel):
     total_questions: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TopicBreakdownItem(BaseModel):
+    __test__ = False
+    topic: str
+    percentage: float
+    correct_count: int
+    total_count: int
+    correct_marks: float
+    total_marks: float
+
+
+class DifficultyAnalysisItem(BaseModel):
+    __test__ = False
+    difficulty: str
+    correct_count: int
+    total_count: int
+    percentage: float
+    correct_marks: float
+    total_marks: float
+
+
+class QuestionReviewItem(BaseModel):
+    __test__ = False
+    question_id: int
+    order_index: int
+    question_text: str
+    options: List[str]
+    selected_option: Optional[str] = None
+    correct_option: str
+    is_correct: bool
+    marks: int
+    marks_obtained: float
+    explanation: Optional[str] = None
+    topic: Optional[str] = None
+    difficulty: Optional[str] = None
+
+
+class TestResultResponse(BaseModel):
+    __test__ = False
+    id: int
+    attempt_id: int
+    test_id: int
+    test_title: str
+    category: str
+    duration_minutes: int
+    passing_score: int
+    learner_id: int
+    learner_name: str
+    total_score: float
+    total_marks: int
+    percentage: float
+    accuracy: float
+    is_passed: bool
+    time_taken_seconds: int
+    percentile_score: float
+    percentile_label: str
+    topic_breakdown: List[TopicBreakdownItem] = []
+    difficulty_analysis: List[DifficultyAnalysisItem] = []
+    question_reviews: List[QuestionReviewItem] = []
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 

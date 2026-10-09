@@ -26,6 +26,7 @@ import CandidateScreening from "../pages/CandidateScreening";
 import MockTests from "../pages/MockTests";
 import MockTestManagement from "../pages/MockTestManagement";
 import MockTestAttempt from "../pages/MockTestAttempt";
+import TestResult from "../pages/TestResult";
 import Forum from "../pages/Forum";
 import ForumPostDetail from "../pages/ForumPostDetail";
 import NotFound from "../pages/NotFound";
@@ -138,6 +139,31 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <MockTestAttempt />
+            </ProtectedRoute>
+          }
+        />
+        {/* Sprint 2 Test Results & Performance Analysis Route (SKL-58) */}
+        <Route
+          path={ROUTES.MOCK_TEST_RESULT}
+          element={
+            <ProtectedRoute>
+              <TestResult />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TEST_RESULT}
+          element={
+            <ProtectedRoute>
+              <TestResult />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mock-tests/:id/results"
+          element={
+            <ProtectedRoute>
+              <TestResult />
             </ProtectedRoute>
           }
         />

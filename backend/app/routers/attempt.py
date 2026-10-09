@@ -11,11 +11,30 @@ from app.schemas.mock_test import (
     TestAttemptResponse,
     TestAttemptSaveAnswersRequest,
     TestAttemptSubmitRequest,
+    TestResultResponse,
 )
 from app.services.mock_test_service import MockTestService
 
 router = APIRouter(prefix="/attempts", tags=["Test Attempts & Timer (SKL-57)"])
 mock_test_service = MockTestService()
+
+
+@router.get(
+    "/history",
+    response_model=ApiResponse[List[TestResultResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get authenticated learner test results history (SKL-58)",
+)
+def get_my_test_results_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[List[TestResultResponse]]:
+    history = mock_test_service.get_learner_test_history(db=db, current_user=current_user)
+    return ApiResponse[List[TestResultResponse]](
+        success=True,
+        message="Learner test history retrieved successfully",
+        data=history,
+    )
 
 
 @router.get(
@@ -82,6 +101,26 @@ def submit_test_answers(
 
 
 @router.get(
+    "/{attempt_id}/result",
+    response_model=ApiResponse[TestResultResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get test result and performance analysis (SKL-58)",
+)
+def get_attempt_result(
+    attempt_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[TestResultResponse]:
+    result = mock_test_service.get_attempt_result(db=db, attempt_id=attempt_id, current_user=current_user)
+    return ApiResponse[TestResultResponse](
+        success=True,
+        message="Test result and performance analysis retrieved successfully",
+        data=result,
+    )
+
+
+
+@router.get(
     "",
     response_model=ApiResponse[List[TestAttemptResponse]],
     status_code=status.HTTP_200_OK,
@@ -97,3 +136,4 @@ def get_my_attempts(
         message="Test attempts history retrieved successfully",
         data=attempts,
     )
+

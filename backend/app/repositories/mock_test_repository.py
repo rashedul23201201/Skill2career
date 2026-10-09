@@ -1,7 +1,14 @@
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session, joinedload
-from app.models.mock_test import MockTest, TestQuestion, MockTestStatus, TestAttempt, TestAttemptStatus
+from app.models.mock_test import (
+    MockTest,
+    TestQuestion,
+    MockTestStatus,
+    TestAttempt,
+    TestAttemptStatus,
+    TestResult,
+)
 from app.models.user import User
 
 
@@ -137,6 +144,8 @@ class MockTestRepository:
                 marks=q_dict.get("marks", 1),
                 explanation=q_dict.get("explanation"),
                 order_index=q_dict.get("order_index", idx),
+                topic=q_dict.get("topic"),
+                difficulty=q_dict.get("difficulty"),
             )
             db.add(q)
             created_questions.append(q)
@@ -160,6 +169,7 @@ class MockTestRepository:
             .options(
                 joinedload(TestAttempt.test),
                 joinedload(TestAttempt.learner),
+                joinedload(TestAttempt.result),
             )
             .where(TestAttempt.id == attempt_id)
         )
@@ -185,17 +195,63 @@ class MockTestRepository:
     ) -> List[TestAttempt]:
         stmt = (
             select(TestAttempt)
-            .options(joinedload(TestAttempt.test))
+            .options(joinedload(TestAttempt.test), joinedload(TestAttempt.result))
             .where(TestAttempt.learner_id == learner_id)
         )
         if test_id:
             stmt = stmt.where(TestAttempt.test_id == test_id)
         stmt = stmt.order_by(TestAttempt.id.desc())
-        return list(db.execute(stmt).scalars().all())
+        return list(db.execute(stmt).unique().scalars().all())
 
     @staticmethod
     def update_attempt(db: Session, attempt: TestAttempt) -> TestAttempt:
         db.commit()
         db.refresh(attempt)
         return attempt
+
+    @staticmethod
+    def create_result(db: Session, result: TestResult) -> TestResult:
+        db.add(result)
+        db.commit()
+        db.refresh(result)
+        return result
+
+    @staticmethod
+    def get_result_by_attempt_id(db: Session, attempt_id: int) -> Optional[TestResult]:
+        stmt = (
+            select(TestResult)
+            .options(
+                joinedload(TestResult.attempt).joinedload(TestAttempt.test),
+                joinedload(TestResult.attempt).joinedload(TestAttempt.learner),
+            )
+            .where(TestResult.attempt_id == attempt_id)
+        )
+        return db.execute(stmt).unique().scalar_one_or_none()
+
+    @staticmethod
+    def get_submitted_attempts_by_test(db: Session, test_id: int) -> List[TestAttempt]:
+        stmt = (
+            select(TestAttempt)
+            .where(
+                TestAttempt.test_id == test_id,
+                TestAttempt.status.in_([TestAttemptStatus.SUBMITTED.value, TestAttemptStatus.EXPIRED.value]),
+            )
+            .order_by(TestAttempt.score.desc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def get_results_by_test_id(db: Session, test_id: int) -> List[TestResult]:
+        stmt = (
+            select(TestResult)
+            .join(TestAttempt, TestResult.attempt_id == TestAttempt.id)
+            .options(
+                joinedload(TestResult.attempt).joinedload(TestAttempt.test),
+                joinedload(TestResult.attempt).joinedload(TestAttempt.learner),
+            )
+            .where(TestAttempt.test_id == test_id)
+            .order_by(TestResult.percentage.desc())
+        )
+        return list(db.execute(stmt).unique().scalars().all())
+
 

@@ -91,6 +91,21 @@ export const mockTestService = {
     const response = await api.get("/attempts");
     return response.data;
   },
+
+  async getAttemptResult(attemptId) {
+    const response = await api.get(`/attempts/${attemptId}/result`);
+    return response.data;
+  },
+
+  async getMyTestHistory() {
+    const response = await api.get("/attempts/history");
+    return response.data;
+  },
+
+  async getMockTestResults(testId) {
+    const response = await api.get(`/mock-tests/${testId}/results`);
+    return response.data;
+  },
 };
 
 export default mockTestService;
