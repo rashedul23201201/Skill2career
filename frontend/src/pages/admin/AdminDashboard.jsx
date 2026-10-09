@@ -111,6 +111,13 @@ export const AdminDashboard = () => {
         </span>
       );
     }
+    if (action.includes("FEEDBACK")) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
+          {action.replace(/_/g, " ")}
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800">
         {action}
@@ -645,6 +652,8 @@ export const AdminDashboard = () => {
                       ) : (
                         <UserX className="w-4 h-4 text-crimson" />
                       )
+                    ) : log.action.includes("FEEDBACK") ? (
+                      <Award className="w-4 h-4 text-emerald-600" />
                     ) : (
                       <ShieldAlert className="w-4 h-4 text-blue-600" />
                     )}
@@ -657,6 +666,8 @@ export const AdminDashboard = () => {
                       <span className="text-slate-500">
                         {log.action === "STATUS_UPDATE"
                           ? `changed active status for user #${log.target_user_id}`
+                          : log.action.includes("FEEDBACK")
+                          ? `${log.action.toLowerCase().replace(/_/g, " ")} (app #${log.details?.application_id || log.target_user_id})`
                           : `updated role for user #${log.target_user_id}`}
                       </span>
                       {getActionBadge(log.action)}

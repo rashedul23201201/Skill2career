@@ -50,6 +50,38 @@ export const interviewService = {
     link.remove();
     window.URL.revokeObjectURL(downloadUrl);
   },
+
+  submitFeedback: async (interviewId, data) => {
+    const res = await api.post(`/interviews/${interviewId}/feedback`, data);
+    return res.data;
+  },
+
+  getInterviewFeedback: async (interviewId) => {
+    const res = await api.get(`/interviews/${interviewId}/feedback`);
+    return res.data;
+  },
+
+  getApplicationFeedback: async (applicationId) => {
+    const res = await api.get(`/applications/${applicationId}/interview-feedback`);
+    return res.data;
+  },
+
+  updateFeedback: async (feedbackId, data) => {
+    const res = await api.put(`/interviews/feedback/${feedbackId}`, data);
+    return res.data;
+  },
+
+  shareFeedback: async (interviewId, isShared = true) => {
+    const res = await api.post(`/interviews/${interviewId}/feedback/share`, {
+      is_shared_with_candidate: isShared,
+    });
+    return res.data;
+  },
+
+  getFeedbackAuditLogs: async (params = {}) => {
+    const res = await api.get("/interviews/feedback/audit-logs", { params });
+    return res.data;
+  },
 };
 
 export default interviewService;

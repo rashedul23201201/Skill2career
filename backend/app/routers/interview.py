@@ -13,10 +13,16 @@ from app.schemas.interview import (
     InterviewStatusUpdateRequest,
     InterviewRequestResponse,
     PaginatedInterviewResponse,
+    InterviewFeedbackCreate,
+    InterviewFeedbackUpdate,
+    InterviewFeedbackShareRequest,
+    InterviewFeedbackResponse,
+    ConsolidatedTeamFeedbackResponse,
+    FeedbackAuditLogResponse,
 )
 from app.services.interview_service import InterviewService
 
-router = APIRouter(tags=["Interview Request & Scheduling (SKL-9)"])
+router = APIRouter(tags=["Interview Scheduling & Feedback (SKL-9 / SKL-10)"])
 interview_service = InterviewService()
 
 
@@ -210,3 +216,147 @@ def download_calendar_ics(
             "Cache-Control": "no-cache",
         },
     )
+
+
+@router.post(
+    "/interviews/{interview_id}/feedback",
+    response_model=ApiResponse[InterviewFeedbackResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit structured interview feedback scorecard (SKL-10 Deliverable)",
+)
+def submit_interview_feedback(
+    interview_id: int,
+    request: InterviewFeedbackCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[InterviewFeedbackResponse]:
+    result = interview_service.submit_interview_feedback(
+        db=db,
+        current_user=current_user,
+        interview_id=interview_id,
+        request=request,
+    )
+    return ApiResponse[InterviewFeedbackResponse](
+        success=True,
+        message="Interview feedback scorecard recorded successfully",
+        data=result,
+    )
+
+
+@router.get(
+    "/interviews/{interview_id}/feedback",
+    response_model=ApiResponse[ConsolidatedTeamFeedbackResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get interview feedback (consolidated for company, shared for candidate)",
+)
+def get_interview_feedback(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[ConsolidatedTeamFeedbackResponse]:
+    result = interview_service.get_interview_feedback(
+        db=db, current_user=current_user, interview_id=interview_id
+    )
+    return ApiResponse[ConsolidatedTeamFeedbackResponse](
+        success=True,
+        message="Interview feedback retrieved successfully",
+        data=result,
+    )
+
+
+@router.put(
+    "/interviews/feedback/{feedback_id}",
+    response_model=ApiResponse[InterviewFeedbackResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update existing interview feedback scorecard",
+)
+def update_interview_feedback(
+    feedback_id: int,
+    request: InterviewFeedbackUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[InterviewFeedbackResponse]:
+    result = interview_service.update_interview_feedback(
+        db=db,
+        current_user=current_user,
+        feedback_id=feedback_id,
+        request=request,
+    )
+    return ApiResponse[InterviewFeedbackResponse](
+        success=True,
+        message="Interview feedback scorecard updated",
+        data=result,
+    )
+
+
+@router.post(
+    "/interviews/{interview_id}/feedback/share",
+    response_model=ApiResponse[ConsolidatedTeamFeedbackResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Publish or unpublish constructive feedback to the candidate",
+)
+def share_interview_feedback(
+    interview_id: int,
+    request: Optional[InterviewFeedbackShareRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[ConsolidatedTeamFeedbackResponse]:
+    should_share = request.is_shared_with_candidate if request else True
+    result = interview_service.share_interview_feedback(
+        db=db,
+        current_user=current_user,
+        interview_id=interview_id,
+        is_shared=should_share,
+    )
+    return ApiResponse[ConsolidatedTeamFeedbackResponse](
+        success=True,
+        message="Candidate feedback visibility updated successfully",
+        data=result,
+    )
+
+
+@router.get(
+    "/applications/{application_id}/interview-feedback",
+    response_model=ApiResponse[Optional[ConsolidatedTeamFeedbackResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get interview feedback for a job application",
+)
+def get_application_interview_feedback(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[Optional[ConsolidatedTeamFeedbackResponse]]:
+    result = interview_service.get_application_feedback(
+        db=db, current_user=current_user, application_id=application_id
+    )
+    return ApiResponse[Optional[ConsolidatedTeamFeedbackResponse]](
+        success=True,
+        message="Application interview feedback retrieved",
+        data=result,
+    )
+
+
+@router.get(
+    "/interviews/feedback/audit-logs",
+    status_code=status.HTTP_200_OK,
+    summary="Admin compliance audit trail for interview evaluations (AC-5)",
+)
+def get_feedback_audit_logs(
+    interview_id: Optional[int] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = interview_service.get_feedback_audit_logs(
+        db=db,
+        current_user=current_user,
+        interview_id=interview_id,
+        page=page,
+        size=size,
+    )
+    return {
+        "success": True,
+        "message": "Interview evaluation audit logs retrieved successfully",
+        "data": result,
+    }
