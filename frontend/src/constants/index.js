@@ -58,5 +58,7 @@ export const ROUTES = {
   INSTRUCTOR_APPLY: "/instructor/apply",
   LEARNER_APPLICATIONS: "/learner/applications",
   APPLICATIONS: "/applications",
+  INTERVIEWS: "/learner/interviews",
+  RECRUITMENT: "/interviews",
 };
 

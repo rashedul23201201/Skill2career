@@ -228,6 +228,22 @@ export const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path={ROUTES.INTERVIEWS}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerApplications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.RECRUITMENT}
+          element={
+            <ProtectedRoute allowedRoles={[USER_ROLES.LEARNER, USER_ROLES.ADMIN]}>
+              <LearnerApplications />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Protected Company Verification Routes (SKL-2) */}
         <Route

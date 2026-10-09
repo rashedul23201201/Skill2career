@@ -17,6 +17,7 @@ from app.routers.attempt import router as attempt_router
 from app.routers.forum import router as forum_router
 from app.routers.enrollment import router as enrollment_router
 from app.routers.application import router as application_router
+from app.routers.interview import router as interview_router
 
 api_router = APIRouter()
 
@@ -36,6 +37,7 @@ api_router.include_router(attempt_router)
 api_router.include_router(forum_router)
 api_router.include_router(enrollment_router)
 api_router.include_router(application_router)
+api_router.include_router(interview_router)
 
 router = api_router
 

@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import companyService from "../../services/companyService";
 import jobService from "../../services/jobService";
 import screeningService from "../../services/screeningService";
+import interviewService from "../../services/interviewService";
 import Button from "../../components/forms/Button";
 import { ROUTES } from "../../constants";
 import {
@@ -20,6 +21,9 @@ import {
   Video,
   X,
   ExternalLink,
+  CalendarCheck,
+  Clock,
+  Send,
 } from "lucide-react";
 
 export const CompanyDashboard = () => {
@@ -33,8 +37,20 @@ export const CompanyDashboard = () => {
   const [jobs, setJobs] = useState([]);
   const [recentApplicants, setRecentApplicants] = useState([]);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [companyInterviews, setCompanyInterviews] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isInterviewsModalOpen, setIsInterviewsModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    interview_type: "Technical Interview",
+    meeting_platform: "Google Meet",
+    meeting_link: "",
+    duration_minutes: 45,
+    proposed_date: "",
+    proposed_time: "15:00",
+    notes: "",
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -86,6 +102,15 @@ export const CompanyDashboard = () => {
         }
       } else {
         setRecentApplicants([]);
+      }
+
+      try {
+        const interviewRes = await interviewService.getMyInterviews({ size: 10 });
+        if (interviewRes?.data?.items) {
+          setCompanyInterviews(interviewRes.data.items);
+        }
+      } catch {
+        setCompanyInterviews([]);
       }
     } catch (err) {
       console.error("Dashboard data load error:", err);
@@ -434,7 +459,7 @@ export const CompanyDashboard = () => {
             Upcoming Interviews
           </h2>
           <span className="text-xs text-slate-400 font-medium">
-            Schedule synced
+            {companyInterviews.length} sessions scheduled
           </span>
         </div>
 
@@ -445,10 +470,27 @@ export const CompanyDashboard = () => {
             </div>
             <div>
               <h3 className="font-bold text-sm text-navy-950">
-                Rashedul Islam — Junior Software Developer
+                {companyInterviews[0]?.candidate_name
+                  ? `${companyInterviews[0].candidate_name} — ${companyInterviews[0].job_title}`
+                  : "Rashedul Islam — Junior Software Developer"}
               </h3>
               <p className="text-xs text-slate-500">
-                Technical Interview • Tomorrow • <span className="font-semibold text-blue-600">3:00 PM</span>
+                {companyInterviews[0] ? (
+                  <>
+                    {companyInterviews[0].interview_type} •{" "}
+                    {companyInterviews[0].scheduled_at
+                      ? new Date(companyInterviews[0].scheduled_at).toLocaleDateString()
+                      : "Proposed Slot"}{" "}
+                    •{" "}
+                    <span className="font-semibold text-blue-600">
+                      {companyInterviews[0].scheduled_at
+                        ? new Date(companyInterviews[0].scheduled_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+                        : "3:00 PM BST"}
+                    </span>
+                  </>
+                ) : (
+                  <>Technical Interview • Tomorrow • <span className="font-semibold text-blue-600">3:00 PM BST</span></>
+                )}
               </p>
             </div>
           </div>
@@ -582,31 +624,116 @@ export const CompanyDashboard = () => {
         </div>
       )}
 
-      {/* Interviews Modal (Sprint 2 Ticket SKL-9 Preview) */}
+      {/* Interviews Schedule Modal (SKL-9) */}
       {isInterviewsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 shadow-2xl text-center">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-              <Calendar className="w-6 h-6" />
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 space-y-5 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-navy-950 font-heading">
+                    Company Interview Sessions
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Live video interviews, candidate slot bookings, and calendar synchronization
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInterviewsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <h3 className="text-lg font-bold text-navy-950 font-heading">
-              Interview Schedule
-            </h3>
-            <div className="text-left p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1">
-              <div className="font-bold text-slate-900">Rashedul Islam — Junior Software Developer</div>
-              <div className="text-slate-600">Technical Assessment Round</div>
-              <div className="text-blue-600 font-semibold">Tomorrow at 3:00 PM (Google Meet)</div>
+
+            {companyInterviews.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500 space-y-2">
+                <p>No active interview requests yet.</p>
+                <p className="text-[11px] text-slate-400">
+                  Select an applicant from your candidate pipeline below to propose interview slots.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {companyInterviews.map((iv) => (
+                  <div
+                    key={iv.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 text-xs"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-bold text-navy-950 text-sm">
+                          {iv.candidate_name} — {iv.job_title}
+                        </h4>
+                        <span className="text-slate-500 font-medium">
+                          {iv.interview_type} • {iv.meeting_platform}
+                        </span>
+                      </div>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          iv.status === "SCHEDULED"
+                            ? "bg-blue-50 text-blue-700"
+                            : iv.status === "RESCHEDULE_REQUESTED"
+                            ? "bg-amber-50 text-amber-700"
+                            : iv.status === "COMPLETED"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-purple-50 text-purple-700"
+                        }`}
+                      >
+                        {iv.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-slate-600 pt-1 border-t border-slate-100">
+                      <div className="flex items-center space-x-1.5 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>
+                          {iv.scheduled_at
+                            ? `${new Date(iv.scheduled_at).toLocaleDateString()} at ${new Date(iv.scheduled_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                            : "Pending Candidate Slot Selection"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {iv.meeting_link && (
+                          <a
+                            href={iv.meeting_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 font-semibold hover:underline flex items-center space-x-1"
+                          >
+                            <span>Meeting Link</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => interviewService.downloadIcsCalendar(iv.id)}
+                          className="px-2.5 py-1 bg-white border border-slate-200 rounded-md font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          .ics Invite
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsInterviewsModalOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-navy-950 text-white font-semibold text-xs"
+              >
+                Close
+              </button>
             </div>
-            <p className="text-xs text-slate-500">
-              Direct interview calendar synchronization is handled by Sprint 2 Ticket <strong>SKL-9: Interview Request & Scheduling</strong> (assigned to Lam-Yea).
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsInterviewsModalOpen(false)}
-              className="w-full py-2 rounded-xl bg-navy-950 text-white font-semibold text-xs"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
@@ -699,15 +826,215 @@ export const CompanyDashboard = () => {
                 Close
               </button>
 
-              <Link
-                to={`/jobs/${selectedApplicant.job_id || jobs[0]?.id || 1}`}
-                onClick={() => setSelectedApplicant(null)}
-                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-xs transition-colors"
-              >
-                <span>View Job Post & Screen Candidates</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(true)}
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors"
+                >
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  <span>Schedule Interview</span>
+                </button>
+
+                <Link
+                  to={`/jobs/${selectedApplicant.job_id || jobs[0]?.id || 1}`}
+                  onClick={() => setSelectedApplicant(null)}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-xs transition-colors"
+                >
+                  <span>View Job Post</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recruiter Proposes Interview Invitation Modal (SKL-9) */}
+      {isScheduleModalOpen && selectedApplicant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-in">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-navy-950 font-heading">
+                    Invite Candidate to Interview
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Candidate: {selectedApplicant.candidate_name} ({selectedApplicant.job_title})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  setScheduleLoading(true);
+                  const now = new Date();
+                  const targetDate = scheduleForm.proposed_date
+                    ? new Date(`${scheduleForm.proposed_date}T${scheduleForm.proposed_time || "15:00"}:00`)
+                    : new Date(now.getTime() + 48 * 3600 * 1000);
+                  const endTarget = new Date(targetDate.getTime() + (scheduleForm.duration_minutes || 45) * 60000);
+
+                  const payload = {
+                    interview_type: scheduleForm.interview_type,
+                    meeting_platform: scheduleForm.meeting_platform,
+                    meeting_link: scheduleForm.meeting_link || undefined,
+                    duration_minutes: Number(scheduleForm.duration_minutes) || 45,
+                    notes: scheduleForm.notes || undefined,
+                    proposed_slots: [
+                      {
+                        start_time: targetDate.toISOString(),
+                        end_time: endTarget.toISOString(),
+                      },
+                    ],
+                  };
+
+                  await interviewService.createInterviewRequest(selectedApplicant.id, payload);
+                  setIsScheduleModalOpen(false);
+                  setSelectedApplicant(null);
+                  loadDashboardData();
+                  alert("Interview invitation sent to candidate successfully!");
+                } catch (err) {
+                  console.error("Schedule error:", err);
+                  alert(err.response?.data?.message || "Failed to schedule interview.");
+                } finally {
+                  setScheduleLoading(false);
+                }
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Interview Round / Type
+                </label>
+                <select
+                  value={scheduleForm.interview_type}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, interview_type: e.target.value })}
+                  className="w-full p-2.5 rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:border-blue-500 text-xs"
+                >
+                  <option value="Technical Interview">Technical Interview</option>
+                  <option value="Company Interview">Company Interview</option>
+                  <option value="HR / Cultural Fit Round">HR / Cultural Fit Round</option>
+                  <option value="System Design Assessment">System Design Assessment</option>
+                  <option value="Live Coding Session">Live Coding Session</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Meeting Platform
+                  </label>
+                  <select
+                    value={scheduleForm.meeting_platform}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, meeting_platform: e.target.value })}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:border-blue-500 text-xs"
+                  >
+                    <option value="Google Meet">Google Meet</option>
+                    <option value="Zoom">Zoom</option>
+                    <option value="Microsoft Teams">Microsoft Teams</option>
+                    <option value="On-site Office">On-site Office</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Duration (Minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="15"
+                    max="180"
+                    value={scheduleForm.duration_minutes}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, duration_minutes: e.target.value })}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Proposed Date
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduleForm.proposed_date}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, proposed_date: e.target.value })}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Proposed Time (BST)
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduleForm.proposed_time}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, proposed_time: e.target.value })}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Custom Meeting Link (optional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="Leave blank for auto-generated Google Meet URL"
+                  value={scheduleForm.meeting_link}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, meeting_link: e.target.value })}
+                  className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Candidate Instructions / Notes
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Instructions for the candidate before the call..."
+                  value={scheduleForm.notes}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+                  className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end space-x-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={scheduleLoading}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center space-x-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{scheduleLoading ? "Sending Invite..." : "Send Interview Request"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

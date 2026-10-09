@@ -11,6 +11,7 @@ from app.models.forum import ForumCategory, ForumPost, ForumComment, ForumLike, 
 from app.models.screening import ScreeningQuestion, CandidateEvaluation, QuestionType, DealBreakerRule, CandidateStatus
 from app.models.enrollment import CourseEnrollment, LessonProgress, EnrollmentStatus
 from app.models.application import JobApplication, ApplicationStatus
+from app.models.interview import InterviewRequest, InterviewSlot, InterviewStatus
 
 __all__ = [
     "User",
@@ -52,6 +53,9 @@ __all__ = [
     "CandidateStatus",
     "JobApplication",
     "ApplicationStatus",
+    "InterviewRequest",
+    "InterviewSlot",
+    "InterviewStatus",
 ]
 
 

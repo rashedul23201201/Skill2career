@@ -11,6 +11,7 @@ from app.services.mock_test_service import MockTestService
 from app.services.screening_service import ScreeningService
 from app.services.forum_service import ForumService
 from app.services.application_service import ApplicationService
+from app.services.interview_service import InterviewService
 
 __all__ = [
     "AuthService",
@@ -24,4 +25,5 @@ __all__ = [
     "ScreeningService",
     "ForumService",
     "ApplicationService",
+    "InterviewService",
 ]

@@ -131,6 +131,16 @@ from app.schemas.application import (
     PaginatedApplicationResponse,
     ApplicationCheckResponse,
 )
+from app.schemas.interview import (
+    InterviewSlotCreate,
+    InterviewSlotResponse,
+    InterviewRequestCreate,
+    InterviewSelectSlotRequest,
+    InterviewRescheduleRequest,
+    InterviewStatusUpdateRequest,
+    InterviewRequestResponse,
+    PaginatedInterviewResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -235,4 +245,12 @@ __all__ = [
     "JobApplicationResponse",
     "PaginatedApplicationResponse",
     "ApplicationCheckResponse",
+    "InterviewSlotCreate",
+    "InterviewSlotResponse",
+    "InterviewRequestCreate",
+    "InterviewSelectSlotRequest",
+    "InterviewRescheduleRequest",
+    "InterviewStatusUpdateRequest",
+    "InterviewRequestResponse",
+    "PaginatedInterviewResponse",
 ]
