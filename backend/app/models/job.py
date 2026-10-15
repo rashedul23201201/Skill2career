@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List
-from sqlalchemy import String, DateTime, Integer, ForeignKey, Text, JSON, func
+from sqlalchemy import String, DateTime, Integer, ForeignKey, Text, JSON, func, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
@@ -53,6 +53,8 @@ class JobPosting(Base):
     skills: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     compensation: Mapped[str] = mapped_column(String(100), nullable=False)
+    salary_min: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=0, index=True)
+    salary_max: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=0, index=True)
     duration: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     experience_level: Mapped[str] = mapped_column(String(50), default=JobExperienceLevel.ENTRY_LEVEL.value, nullable=False)
     category: Mapped[str] = mapped_column(String(100), default="Software Engineering", nullable=False, index=True)
@@ -60,6 +62,11 @@ class JobPosting(Base):
     deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default=JobStatus.ACTIVE.value, nullable=False, index=True)
     applications_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    __table_args__ = (
+        Index("ix_job_postings_search_composite", "status", "posting_type", "work_mode", "location"),
+        Index("ix_job_postings_search_attrs", "title", "work_mode", "location", "status"),
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

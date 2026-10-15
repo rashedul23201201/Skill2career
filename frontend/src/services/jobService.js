@@ -13,6 +13,22 @@ export const jobService = {
   },
 
   /**
+   * Search vacancies with full-text keyword indexing, multi-criteria filtering, and sorting (SKL-5).
+   */
+  async searchJobs(params = {}) {
+    const response = await api.get("/jobs/search", { params });
+    return response.data;
+  },
+
+  /**
+   * Fetch filter facets, domains, locations, and salary presets for vacancy exploration (SKL-5).
+   */
+  async getTaxonomies() {
+    const response = await api.get("/jobs/taxonomies");
+    return response.data;
+  },
+
+  /**
    * Fetch single job posting details including requirements and hiring company profile.
    */
   async getJobById(jobId) {
