@@ -28,6 +28,11 @@ class MockTest(Base):
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_premium: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
+    moderation_status: Mapped[str] = mapped_column(String(50), default="APPROVED", nullable=False, index=True)
+    moderated_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    moderation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    moderated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -43,6 +48,7 @@ class MockTest(Base):
     )
 
     instructor = relationship("User", foreign_keys=[instructor_id], backref="mock_tests")
+    moderator = relationship("User", foreign_keys=[moderated_by])
     questions = relationship("TestQuestion", back_populates="test", cascade="all, delete-orphan", order_by="TestQuestion.order_index")
 
     def __repr__(self) -> str:

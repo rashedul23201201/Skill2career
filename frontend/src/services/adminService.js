@@ -78,6 +78,94 @@ export const adminService = {
     });
     return response.data;
   },
+
+  /**
+   * Fetch courses and mock tests awaiting administrative moderation review (SKL-25).
+   */
+  async getPendingModeration() {
+    const response = await api.get("/admin/moderation/pending");
+    return response.data;
+  },
+
+  /**
+   * Fetch moderation items with optional status and content_type filter (SKL-25).
+   */
+  async getModerationItems(params = {}) {
+    const response = await api.get("/admin/moderation/items", { params });
+    return response.data;
+  },
+
+  /**
+   * Fetch overview count metrics across moderation stages (SKL-25).
+   */
+  async getModerationStats() {
+    const response = await api.get("/admin/moderation/stats");
+    return response.data;
+  },
+
+  /**
+   * Fetch complete course curriculum details for inspection drawer (SKL-25).
+   */
+  async getCourseModerationPreview(courseId) {
+    const response = await api.get(`/admin/moderation/courses/${courseId}/preview`);
+    return response.data;
+  },
+
+  /**
+   * Fetch complete mock test questions & solutions for inspection drawer (SKL-25).
+   */
+  async getMockTestModerationPreview(testId) {
+    const response = await api.get(`/admin/moderation/mock-tests/${testId}/preview`);
+    return response.data;
+  },
+
+  /**
+   * Administratively approve a course for catalog distribution (SKL-25).
+   */
+  async approveCourse(courseId, { notes = "" } = {}) {
+    const response = await api.post(`/admin/moderation/courses/${courseId}/approve`, {
+      notes,
+    });
+    return response.data;
+  },
+
+  /**
+   * Administratively restrict a policy-violating course (SKL-25).
+   */
+  async restrictCourse(courseId, { reason = "" }) {
+    const response = await api.post(`/admin/moderation/courses/${courseId}/restrict`, {
+      reason,
+    });
+    return response.data;
+  },
+
+  /**
+   * Administratively approve a mock test for assessment catalog (SKL-25).
+   */
+  async approveMockTest(testId, { notes = "" } = {}) {
+    const response = await api.post(`/admin/moderation/mock-tests/${testId}/approve`, {
+      notes,
+    });
+    return response.data;
+  },
+
+  /**
+   * Administratively restrict a policy-violating mock test (SKL-25).
+   */
+  async restrictMockTest(testId, { reason = "" }) {
+    const response = await api.post(`/admin/moderation/mock-tests/${testId}/restrict`, {
+      reason,
+    });
+    return response.data;
+  },
+
+  /**
+   * Fetch chronological audit log of administrative moderation actions (SKL-25).
+   */
+  async getModerationLogs(params = {}) {
+    const response = await api.get("/admin/moderation/logs", { params });
+    return response.data;
+  },
 };
 
 export default adminService;

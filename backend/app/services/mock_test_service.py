@@ -83,6 +83,10 @@ class MockTestService:
             status=test.status,
             is_published=test.is_published,
             is_premium=getattr(test, "is_premium", False),
+            moderation_status=getattr(test, "moderation_status", "APPROVED") or "APPROVED",
+            moderation_notes=getattr(test, "moderation_notes", None),
+            moderated_by=getattr(test, "moderated_by", None),
+            moderated_at=getattr(test, "moderated_at", None),
             created_at=test.created_at,
             updated_at=test.updated_at,
         )
@@ -210,8 +214,9 @@ class MockTestService:
             or (current_user.role == UserRole.INSTRUCTOR and test.instructor_id == current_user.id)
         )
 
-        if not test.is_published and not is_manager:
-            raise ForbiddenException("This mock test is not published yet")
+        mod_status = getattr(test, "moderation_status", "APPROVED") or "APPROVED"
+        if (not test.is_published or mod_status != "APPROVED") and not is_manager:
+            raise ForbiddenException("This mock test is not published yet or is pending moderation")
 
         hide_answers = not is_manager
         base_resp = self._to_test_response(test)
@@ -235,12 +240,15 @@ class MockTestService:
     ) -> PaginatedMockTestResponse:
         is_published_only = True
         instructor_id = None
+        moderation_status = None
 
         if my_tests and current_user and current_user.role in [UserRole.INSTRUCTOR, UserRole.ADMIN]:
             is_published_only = False
             instructor_id = current_user.id
         elif current_user and current_user.role == UserRole.ADMIN and status:
             is_published_only = False
+        else:
+            moderation_status = "APPROVED"
 
         items, total = self.mock_test_repo.get_tests_paginated(
             db=db,
@@ -251,6 +259,7 @@ class MockTestService:
             instructor_id=instructor_id,
             status=status,
             is_published_only=is_published_only,
+            moderation_status=moderation_status,
         )
 
         total_pages = math.ceil(total / size) if total > 0 else 1

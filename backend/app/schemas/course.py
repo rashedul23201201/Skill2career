@@ -91,6 +91,10 @@ class CourseResponse(BaseModel):
     price: float
     is_free: bool
     status: str
+    moderation_status: Optional[str] = "APPROVED"
+    moderation_notes: Optional[str] = None
+    moderated_by: Optional[int] = None
+    moderated_at: Optional[datetime] = None
     thumbnail_url: Optional[str] = None
     duration_weeks: int
     lessons_count: int = 0

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import adminService from "../../services/adminService";
 import instructorService from "../../services/instructorService";
+import ContentModerationTab from "../../components/admin/ContentModerationTab";
 import { ROUTES } from "../../constants";
 import {
   Users,
@@ -25,7 +26,11 @@ import {
 } from "lucide-react";
 
 export const AdminDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "moderation" ? "moderation" : "overview";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [stats, setStats] = useState(null);
+  const [moderationStats, setModerationStats] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
   const [pendingInstructors, setPendingInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,15 +44,17 @@ export const AdminDashboard = () => {
       else setLoading(true);
       setError(null);
 
-      const [statsRes, logsRes, pendingInstRes] = await Promise.all([
+      const [statsRes, logsRes, pendingInstRes, modStatsRes] = await Promise.all([
         adminService.getOverviewStats(),
         adminService.getAuditLogs(10),
         instructorService.getPendingInstructors().catch(() => ({ data: [] })),
+        adminService.getModerationStats().catch(() => ({ data: null })),
       ]);
 
       if (statsRes?.data) setStats(statsRes.data);
       if (logsRes?.data) setAuditLogs(logsRes.data);
       if (pendingInstRes?.data) setPendingInstructors(pendingInstRes.data);
+      if (modStatsRes?.data) setModerationStats(modStatsRes.data);
     } catch (err) {
       console.error("Failed to load admin dashboard data:", err);
       setError("Unable to load administration telemetry. Please ensure the backend is running.");
@@ -177,8 +184,52 @@ export const AdminDashboard = () => {
         </div>
       )}
 
-      {/* 4 Metric Counters (Admin Dashboard.png) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* Admin Dashboard Navigation Tabs (Admin Dashboard.png) */}
+      <div className="flex border-b border-slate-200 space-x-6 sm:space-x-8">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("overview");
+            setSearchParams({});
+          }}
+          className={`pb-3.5 px-1 text-sm font-bold flex items-center space-x-2 border-b-2 transition-all ${
+            activeTab === "overview"
+              ? "border-navy-950 text-navy-950"
+              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+          }`}
+        >
+          <Shield className="w-4 h-4 text-slate-600" />
+          <span>Ecosystem & Governance</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("moderation");
+            setSearchParams({ tab: "moderation" });
+          }}
+          className={`pb-3.5 px-1 text-sm font-bold flex items-center space-x-2 border-b-2 transition-all ${
+            activeTab === "moderation"
+              ? "border-amber-600 text-amber-600"
+              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4 text-amber-600" />
+          <span>Content Moderation (SKL-25)</span>
+          {moderationStats?.total_pending > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 animate-pulse">
+              {moderationStats.total_pending}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === "moderation" ? (
+        <ContentModerationTab />
+      ) : (
+        <>
+          {/* 4 Metric Counters (Admin Dashboard.png) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Metric 1: Total Users */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
@@ -399,14 +450,18 @@ export const AdminDashboard = () => {
                 Audit curriculum syllabi, manage course modules, verify instructor materials, and maintain educational quality.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <Link
-                to={ROUTES.COURSES}
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("moderation");
+                  setSearchParams({ tab: "moderation" });
+                }}
                 className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-800 transition-colors"
               >
-                <span>Curate Courses</span>
+                <span>Moderate Courses & Tests</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -690,6 +745,8 @@ export const AdminDashboard = () => {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };
