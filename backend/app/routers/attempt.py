@@ -119,6 +119,26 @@ def get_attempt_result(
     )
 
 
+@router.get(
+    "/{attempt_id}/analytics",
+    response_model=ApiResponse[TestResultResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get advanced performance analytics (SKL-19 Pro Entitlement Gated)",
+)
+def get_attempt_analytics(
+    attempt_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[TestResultResponse]:
+    analytics = mock_test_service.get_attempt_analytics(db=db, attempt_id=attempt_id, current_user=current_user)
+    return ApiResponse[TestResultResponse](
+        success=True,
+        message="Advanced performance analytics retrieved successfully",
+        data=analytics,
+    )
+
+
+
 
 @router.get(
     "",

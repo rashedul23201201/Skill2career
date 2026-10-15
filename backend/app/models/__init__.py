@@ -18,6 +18,15 @@ from app.models.interview import (
     InterviewFeedback,
     InterviewRecommendation,
 )
+from app.models.subscription import (
+    SubscriptionPlan,
+    UserSubscription,
+    PaymentTransaction,
+    SubscriptionPlanCode,
+    SubscriptionBillingCycle,
+    SubscriptionStatus,
+    PaymentStatus,
+)
 
 __all__ = [
     "User",
@@ -64,6 +73,13 @@ __all__ = [
     "InterviewStatus",
     "InterviewFeedback",
     "InterviewRecommendation",
+    "SubscriptionPlan",
+    "UserSubscription",
+    "PaymentTransaction",
+    "SubscriptionPlanCode",
+    "SubscriptionBillingCycle",
+    "SubscriptionStatus",
+    "PaymentStatus",
 ]
 
 

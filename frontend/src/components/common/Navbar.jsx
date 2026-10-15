@@ -20,6 +20,7 @@ import {
   Sparkles,
   PlusCircle,
   Users,
+  CreditCard,
 } from "lucide-react";
 
 export const Navbar = () => {
@@ -417,6 +418,14 @@ export const Navbar = () => {
                             </Link>
                           </>
                         )}
+
+                        <Link
+                          to={ROUTES.SUBSCRIPTION}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 rounded-lg transition-colors border-t border-slate-100"
+                        >
+                          <CreditCard className="w-4 h-4 text-emerald-600" />
+                          <span>Subscription &amp; Payment</span>
+                        </Link>
                       </div>
 
                       {/* Logout Action */}
@@ -575,6 +584,14 @@ export const Navbar = () => {
                     <span>Admin Panel</span>
                   </Link>
                 )}
+
+                <Link
+                  to={ROUTES.SUBSCRIPTION}
+                  className="col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Subscription &amp; Payment</span>
+                </Link>
 
                 <button
                   type="button"

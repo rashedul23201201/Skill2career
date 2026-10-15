@@ -1,6 +1,6 @@
 import math
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import Optional, List, Any
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
@@ -55,9 +55,15 @@ class MockTestService:
         self,
         mock_test_repo: MockTestRepository = MockTestRepository(),
         audit_repo: AuditLogRepository = AuditLogRepository(),
+        subscription_service: Optional[Any] = None,
     ):
         self.mock_test_repo = mock_test_repo
         self.audit_repo = audit_repo
+        if subscription_service is not None:
+            self.subscription_service = subscription_service
+        else:
+            from app.services.subscription_service import SubscriptionService
+            self.subscription_service = SubscriptionService()
 
     def _to_test_response(self, test: MockTest) -> MockTestResponse:
         instructor_name = "Instructor"
@@ -76,6 +82,7 @@ class MockTestService:
             total_questions=test.total_questions or len(test.questions or []),
             status=test.status,
             is_published=test.is_published,
+            is_premium=getattr(test, "is_premium", False),
             created_at=test.created_at,
             updated_at=test.updated_at,
         )
@@ -177,6 +184,7 @@ class MockTestService:
             total_questions=0,
             status=request.status.value,
             is_published=is_published,
+            is_premium=request.is_premium,
         )
         created = self.mock_test_repo.create_test(db, test)
 
@@ -276,6 +284,8 @@ class MockTestService:
         if request.status is not None:
             test.status = request.status.value
             test.is_published = (request.status == MockTestStatus.PUBLISHED)
+        if request.is_premium is not None:
+            test.is_premium = request.is_premium
 
         updated = self.mock_test_repo.update_test(db, test)
         return self._to_test_response(updated)
@@ -433,6 +443,11 @@ class MockTestService:
         )
         if not test.is_published and not is_manager:
             raise ForbiddenException("This mock test is not published yet")
+
+        # SKL-19 Subscription Entitlement Check on premium mock tests
+        if getattr(test, "is_premium", False) and not is_manager:
+            if not self.subscription_service.check_has_active_pro(db, current_user.id):
+                raise ForbiddenException("Premium subscription required to access this mock test. Upgrade to Pro to unlock.")
 
         now = datetime.now(timezone.utc)
 
@@ -907,4 +922,19 @@ class MockTestService:
             db=db, learner_id=current_user.id, test_id=test_id
         )
         return [self._to_attempt_response(a) for a in attempts]
+
+    def get_attempt_analytics(
+        self, db: Session, attempt_id: int, current_user: User
+    ) -> TestResultResponse:
+        """Fetch advanced performance analytics with percentile and topic breakdown (SKL-19 Pro Gated)."""
+        is_manager = (
+            current_user.role == UserRole.ADMIN
+            or current_user.role == UserRole.INSTRUCTOR
+        )
+        if not is_manager:
+            if not self.subscription_service.check_has_active_pro(db, current_user.id):
+                raise ForbiddenException("Advanced analytics requires an active Pro subscription. Upgrade to Pro to unlock.")
+
+        return self.get_attempt_result(db=db, attempt_id=attempt_id, current_user=current_user)
+
 
