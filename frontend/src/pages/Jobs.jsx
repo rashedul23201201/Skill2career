@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import jobService from "../services/jobService";
@@ -15,6 +15,10 @@ import {
   Building2,
   AlertCircle,
   ExternalLink,
+  SlidersHorizontal,
+  X,
+  ArrowUpDown,
+  RotateCcw,
 } from "lucide-react";
 
 export const Jobs = () => {
@@ -26,18 +30,32 @@ export const Jobs = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Search input state (un-debounced issue avoided by searching on submit or filter click)
+  // 1. Keyword search with 300ms debounce (SKL-5 AC-1)
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
-  const [appliedSearch, setAppliedSearch] = useState(searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("search") || "");
 
-  // Posting type filter: "All", "Job", "Internship"
+  // 2. Multi-criteria filter states (SKL-5 AC-2)
   const [typeFilter, setTypeFilter] = useState(searchParams.get("type") || "All");
+  const [workModeFilter, setWorkModeFilter] = useState(searchParams.get("work_mode") || "All");
+  const [experienceFilter, setExperienceFilter] = useState(searchParams.get("experience") || "All");
+  const [locationFilter, setLocationFilter] = useState(searchParams.get("location") || "");
+  const [salaryPreset, setSalaryPreset] = useState(searchParams.get("salary_preset") || "all");
 
+  // 3. Dynamic sorting (SKL-5 AC-3)
+  const [sortBy, setSortBy] = useState(searchParams.get("sort_by") || "recent");
+
+  // Filter drawer/panel toggle on mobile
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+
+  // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalJobs, setTotalJobs] = useState(0);
 
-  // Bookmarked IDs saved in localStorage
+  // Taxonomies loaded from backend (SKL-5)
+  const [taxonomies, setTaxonomies] = useState(null);
+
+  // Local storage bookmarks
   const [bookmarkedIds, setBookmarkedIds] = useState(() => {
     try {
       const saved = localStorage.getItem("s2c_bookmarked_jobs");
@@ -61,7 +79,7 @@ export const Jobs = () => {
     });
   };
 
-  // Tab: "all" or "my_jobs" (for companies / admins)
+  // Recruiter tab switch ("all" or "my_jobs")
   const isCompanyOrAdmin =
     user?.role === USER_ROLES.COMPANY || user?.role === USER_ROLES.ADMIN;
   const [activeTab, setActiveTab] = useState(
@@ -70,6 +88,44 @@ export const Jobs = () => {
       : "all"
   );
 
+  // Load taxonomies on component mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadTaxonomies() {
+      try {
+        const res = await jobService.getTaxonomies();
+        if (isMounted && res?.data) {
+          setTaxonomies(res.data);
+        }
+      } catch (err) {
+        console.warn("Taxonomies load warning:", err);
+      }
+    }
+    loadTaxonomies();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 300ms Debounce timer for search input (SKL-5 AC-1)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Derive min/max salary from preset
+  const parsedSalaryBounds = useMemo(() => {
+    if (salaryPreset === "under_25k") return { min: 0, max: 25000 };
+    if (salaryPreset === "25k_50k") return { min: 25000, max: 50000 };
+    if (salaryPreset === "50k_80k") return { min: 50000, max: 80000 };
+    if (salaryPreset === "80k_plus") return { min: 80000, max: null };
+    return { min: null, max: null };
+  }, [salaryPreset]);
+
+  // Main fetch function executing SKL-5 search or recruiter listings
   const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
@@ -80,8 +136,8 @@ export const Jobs = () => {
         size: 8,
       };
 
-      if (appliedSearch.trim()) {
-        params.search = appliedSearch.trim();
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
       }
 
       if (typeFilter === "Jobs") {
@@ -90,11 +146,38 @@ export const Jobs = () => {
         params.posting_type = "Internship";
       }
 
-      if (activeTab === "my_jobs") {
-        params.my_jobs = true;
+      if (workModeFilter && workModeFilter !== "All") {
+        params.work_mode = workModeFilter;
       }
 
-      const res = await jobService.getJobs(params);
+      if (experienceFilter && experienceFilter !== "All") {
+        params.experience_level = experienceFilter;
+      }
+
+      if (locationFilter.trim()) {
+        params.location = locationFilter.trim();
+      }
+
+      if (parsedSalaryBounds.min !== null) {
+        params.min_salary = parsedSalaryBounds.min;
+      }
+      if (parsedSalaryBounds.max !== null) {
+        params.max_salary = parsedSalaryBounds.max;
+      }
+
+      if (sortBy) {
+        params.sort_by = sortBy;
+      }
+
+      let res;
+      if (activeTab === "my_jobs") {
+        params.my_jobs = true;
+        res = await jobService.getJobs(params);
+      } else {
+        // SKL-5 Search API with verified company enforcement & multi-criteria filtering
+        res = await jobService.searchJobs(params);
+      }
+
       if (res?.data) {
         setJobs(res.data.items || []);
         setTotalPages(res.data.total_pages || 1);
@@ -106,7 +189,17 @@ export const Jobs = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, appliedSearch, typeFilter, activeTab]);
+  }, [
+    page,
+    debouncedSearch,
+    typeFilter,
+    workModeFilter,
+    experienceFilter,
+    locationFilter,
+    parsedSalaryBounds,
+    sortBy,
+    activeTab,
+  ]);
 
   useEffect(() => {
     fetchJobs();
@@ -114,7 +207,7 @@ export const Jobs = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setAppliedSearch(searchInput.trim());
+    setDebouncedSearch(searchInput.trim());
     setPage(1);
   };
 
@@ -129,6 +222,28 @@ export const Jobs = () => {
     setSearchParams(tab === "my_jobs" ? { tab: "my_jobs" } : {});
   };
 
+  // Reset all filters action (SKL-5 AC-3)
+  const handleResetFilters = () => {
+    setSearchInput("");
+    setDebouncedSearch("");
+    setTypeFilter("All");
+    setWorkModeFilter("All");
+    setExperienceFilter("All");
+    setLocationFilter("");
+    setSalaryPreset("all");
+    setSortBy("recent");
+    setPage(1);
+  };
+
+  const hasActiveFilters =
+    debouncedSearch.length > 0 ||
+    typeFilter !== "All" ||
+    workModeFilter !== "All" ||
+    experienceFilter !== "All" ||
+    locationFilter.length > 0 ||
+    salaryPreset !== "all" ||
+    sortBy !== "recent";
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* 1. Header matching Jobs and internships.png */}
@@ -138,7 +253,7 @@ export const Jobs = () => {
             Jobs & Internships
           </h1>
           <p className="mt-2 text-base text-slate-500">
-            Find job and internship opportunities from companies in Bangladesh.
+            Find job and internship opportunities from verified companies in Bangladesh.
           </p>
         </div>
 
@@ -183,7 +298,7 @@ export const Jobs = () => {
         </div>
       )}
 
-      {/* 3. Search Bar matching Jobs and internships.png */}
+      {/* 3. Search Bar with 300ms Debounce matching Jobs and internships.png */}
       <form onSubmit={handleSearchSubmit} className="flex gap-3 max-w-2xl">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -191,9 +306,22 @@ export const Jobs = () => {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search jobs, skills or companies"
+            placeholder="Search jobs, skills, locations or companies"
             className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-navy-950 placeholder:text-slate-400"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput("");
+                setDebouncedSearch("");
+                setPage(1);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <button
           type="submit"
@@ -203,25 +331,129 @@ export const Jobs = () => {
         </button>
       </form>
 
-      {/* 4. Filter Pills matching Jobs and internships.png (All, Jobs, Internships) */}
-      <div className="flex items-center space-x-2">
-        {["All", "Jobs", "Internships"].map((filter) => {
-          const isSelected = typeFilter === filter;
-          return (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => handleTypeFilterClick(filter)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                isSelected
-                  ? "bg-navy-950 text-white shadow-sm"
-                  : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              {filter}
-            </button>
-          );
-        })}
+      {/* 4. Primary Type Filter Pills matching Jobs and internships.png */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center space-x-2">
+          {["All", "Jobs", "Internships"].map((filter) => {
+            const isSelected = typeFilter === filter;
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => handleTypeFilterClick(filter)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  isSelected
+                    ? "bg-navy-950 text-white shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                {filter}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dynamic counter (SKL-5: "Showing X of Y active jobs") */}
+        <div className="text-xs sm:text-sm font-medium text-slate-500">
+          Showing <span className="font-bold text-navy-950">{jobs.length}</span> of{" "}
+          <span className="font-bold text-navy-950">{totalJobs}</span> active{" "}
+          {typeFilter === "Jobs"
+            ? "jobs"
+            : typeFilter === "Internships"
+            ? "internships"
+            : "vacancies"}
+        </div>
+      </div>
+
+      {/* 5. Multi-Criteria Filter Bar & Dynamic Sorter (SKL-5 AC-2, AC-3) */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-xs">
+        {/* Work Mode */}
+        <div className="flex items-center space-x-1.5">
+          <span className="text-slate-400 font-medium">Mode:</span>
+          <select
+            value={workModeFilter}
+            onChange={(e) => {
+              setWorkModeFilter(e.target.value);
+              setPage(1);
+            }}
+            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none focus:border-blue-500"
+          >
+            <option value="All">All Modes</option>
+            <option value="On-site">On-site</option>
+            <option value="Remote">Remote</option>
+            <option value="Hybrid">Hybrid</option>
+          </select>
+        </div>
+
+        {/* Experience Level */}
+        <div className="flex items-center space-x-1.5">
+          <span className="text-slate-400 font-medium">Level:</span>
+          <select
+            value={experienceFilter}
+            onChange={(e) => {
+              setExperienceFilter(e.target.value);
+              setPage(1);
+            }}
+            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none focus:border-blue-500"
+          >
+            <option value="All">All Levels</option>
+            <option value="Entry Level">Entry Level</option>
+            <option value="Junior">Junior</option>
+            <option value="Mid Level">Mid Level</option>
+            <option value="Senior">Senior</option>
+            <option value="Internship">Internship</option>
+          </select>
+        </div>
+
+        {/* Salary Preset */}
+        <div className="flex items-center space-x-1.5">
+          <span className="text-slate-400 font-medium">Salary:</span>
+          <select
+            value={salaryPreset}
+            onChange={(e) => {
+              setSalaryPreset(e.target.value);
+              setPage(1);
+            }}
+            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-semibold text-slate-700 focus:outline-none focus:border-blue-500"
+          >
+            <option value="all">Any Salary</option>
+            <option value="under_25k">Under ৳25,000</option>
+            <option value="25k_50k">৳25,000 – ৳50,000</option>
+            <option value="50k_80k">৳50,000 – ৳80,000</option>
+            <option value="80k_plus">৳80,000+</option>
+          </select>
+        </div>
+
+        {/* Dynamic Sorter (SKL-5 AC-3) */}
+        <div className="flex items-center space-x-1.5 sm:ml-auto">
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-slate-400 font-medium">Sort By:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
+            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-semibold text-navy-950 focus:outline-none focus:border-blue-500"
+          >
+            <option value="recent">Most Recent</option>
+            <option value="salary_high">Highest Salary</option>
+            <option value="deadline">Application Deadline</option>
+          </select>
+        </div>
+
+        {/* Reset button if any filters applied */}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-red-600 hover:bg-red-50 font-semibold transition-colors"
+            title="Reset all filters"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset</span>
+          </button>
+        )}
       </div>
 
       {error && (
@@ -231,7 +463,7 @@ export const Jobs = () => {
         </div>
       )}
 
-      {/* 5. Loading Skeleton */}
+      {/* 6. Loading Skeleton */}
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[1, 2, 3, 4].map((i) => (
@@ -260,7 +492,7 @@ export const Jobs = () => {
         </div>
       )}
 
-      {/* 6. Empty State */}
+      {/* 7. Clean Empty State with Filter Reset Action (SKL-5 AC-3) */}
       {!loading && jobs.length === 0 && (
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 space-y-4">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -270,11 +502,23 @@ export const Jobs = () => {
             No vacancies found
           </h3>
           <p className="text-slate-500 text-sm max-w-sm mx-auto">
-            {appliedSearch || typeFilter !== "All"
-              ? "Try adjusting your search query or filter criteria."
+            {hasActiveFilters
+              ? "We couldn't find any opportunities matching your specific search and filter criteria."
               : "No vacancies are currently published in this section."}
           </p>
-          {isCompanyOrAdmin && (
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center space-x-2 bg-navy-950 hover:bg-navy-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset All Filters</span>
+            </button>
+          )}
+
+          {isCompanyOrAdmin && !hasActiveFilters && (
             <Link
               to={ROUTES.JOB_NEW}
               className="inline-flex items-center space-x-2 bg-navy-950 text-white text-xs font-semibold px-4 py-2 rounded-xl mt-2"
@@ -286,7 +530,7 @@ export const Jobs = () => {
         </div>
       )}
 
-      {/* 7. 2x2 Grid of Job / Internship Cards matching Jobs and internships.png */}
+      {/* 8. 2x2 Grid of Job / Internship Cards matching Jobs and internships.png */}
       {!loading && jobs.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {jobs.map((job) => {
@@ -390,7 +634,7 @@ export const Jobs = () => {
         </div>
       )}
 
-      {/* 8. Pagination matching Jobs and internships.png (Previous, 1, 2, 3, Next) */}
+      {/* 9. Pagination matching Jobs and internships.png (Previous, 1, 2, 3, Next) */}
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-center space-x-2 pt-6">
           <button

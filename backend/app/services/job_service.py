@@ -1,6 +1,7 @@
 import logging
 import math
-from typing import Optional
+import re
+from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import (
@@ -31,6 +32,38 @@ class JobService:
     ):
         self.job_repo = job_repo
         self.audit_repo = audit_repo
+
+    def _extract_salary_bounds(
+        self, compensation: Optional[str], s_min: Optional[int], s_max: Optional[int]
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """Parse or normalize numeric salary boundaries from compensation string or direct inputs."""
+        if s_min is not None and s_max is not None:
+            return s_min, s_max
+        if not compensation:
+            return s_min, s_max
+
+        cleaned = compensation.replace(",", "").upper()
+        # Find numeric parts with optional 'K' e.g., 35K, 50K or raw numbers
+        matches = re.findall(r"(\d+(?:\.\d+)?)\s*(K|k)?", cleaned)
+        if not matches:
+            return s_min, s_max
+
+        parsed_nums = []
+        for num_str, is_k in matches:
+            try:
+                val = float(num_str)
+                if is_k:
+                    val *= 1000
+                parsed_nums.append(int(val))
+            except ValueError:
+                continue
+
+        if not parsed_nums:
+            return s_min, s_max
+
+        extracted_min = min(parsed_nums) if s_min is None else s_min
+        extracted_max = max(parsed_nums) if s_max is None else s_max
+        return extracted_min, extracted_max
 
     def _to_job_response(self, job: JobPosting) -> JobPostingResponse:
         company_name = "Hiring Company"
@@ -65,6 +98,8 @@ class JobService:
             requirements=job.requirements,
             skills=job.skills or [],
             compensation=job.compensation,
+            salary_min=getattr(job, "salary_min", None),
+            salary_max=getattr(job, "salary_max", None),
             duration=job.duration,
             experience_level=job.experience_level,
             category=job.category,
@@ -95,6 +130,10 @@ class JobService:
                     error_code="COMPANY_NOT_VERIFIED",
                 )
 
+        calc_min, calc_max = self._extract_salary_bounds(
+            request.compensation, request.salary_min, request.salary_max
+        )
+
         new_job = JobPosting(
             company_id=current_user.id,
             title=request.title.strip(),
@@ -105,6 +144,8 @@ class JobService:
             requirements=request.requirements.strip(),
             skills=request.skills or [],
             compensation=request.compensation.strip(),
+            salary_min=calc_min,
+            salary_max=calc_max,
             duration=request.duration.strip() if request.duration else None,
             experience_level=request.experience_level.value if hasattr(request.experience_level, "value") else request.experience_level,
             category=request.category.strip(),
@@ -172,6 +213,11 @@ class JobService:
             job.skills = request.skills
         if request.compensation is not None:
             job.compensation = request.compensation.strip()
+        if request.compensation is not None or request.salary_min is not None or request.salary_max is not None:
+            comp_val = request.compensation.strip() if request.compensation is not None else job.compensation
+            calc_min, calc_max = self._extract_salary_bounds(comp_val, request.salary_min, request.salary_max)
+            job.salary_min = calc_min
+            job.salary_max = calc_max
         if request.duration is not None:
             job.duration = request.duration.strip() if request.duration else None
         if request.experience_level is not None:
@@ -317,3 +363,59 @@ class JobService:
             size=size,
             total_pages=total_pages,
         )
+
+    def search_jobs(
+        self,
+        db: Session,
+        page: int = 1,
+        size: int = 8,
+        search: Optional[str] = None,
+        posting_type: Optional[str] = None,
+        work_mode: Optional[str] = None,
+        category: Optional[str] = None,
+        experience_level: Optional[str] = None,
+        location: Optional[str] = None,
+        min_salary: Optional[int] = None,
+        max_salary: Optional[int] = None,
+        sort_by: Optional[str] = "recent",
+        current_user: Optional[User] = None,
+    ) -> PaginatedJobPostingResponse:
+        """Search vacancies across keywords, categories, work modes, and salary bands (SKL-5)."""
+        page = max(1, page)
+        size = min(100, max(1, size))
+
+        # Enforce company verification gate for public search unless admin (SKL-5 AC-4)
+        enforce_approved = True
+        if current_user and current_user.role == UserRole.ADMIN:
+            enforce_approved = False
+
+        jobs, total = self.job_repo.search_jobs(
+            db=db,
+            page=page,
+            size=size,
+            search=search,
+            posting_type=posting_type,
+            work_mode=work_mode,
+            category=category,
+            experience_level=experience_level,
+            location=location,
+            min_salary=min_salary,
+            max_salary=max_salary,
+            sort_by=sort_by,
+            status=JobStatus.ACTIVE.value,
+            enforce_approved_company=enforce_approved,
+        )
+
+        total_pages = math.ceil(total / size) if size > 0 else 0
+
+        return PaginatedJobPostingResponse(
+            items=[self._to_job_response(j) for j in jobs],
+            total=total,
+            page=page,
+            size=size,
+            total_pages=total_pages,
+        )
+
+    def get_taxonomies(self, db: Session) -> dict:
+        """Retrieve available filter taxonomies and salary presets for vacancy exploration (SKL-5)."""
+        return self.job_repo.get_taxonomies(db)

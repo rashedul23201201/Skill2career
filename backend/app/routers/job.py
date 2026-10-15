@@ -12,6 +12,7 @@ from app.schemas.job import (
     JobPostingStatusUpdateRequest,
     JobPostingResponse,
     PaginatedJobPostingResponse,
+    JobTaxonomiesResponse,
 )
 from app.services.job_service import JobService
 
@@ -78,6 +79,68 @@ def list_jobs(
         success=True,
         message="Job postings retrieved successfully",
         data=result,
+    )
+
+
+@router.get(
+    "/search",
+    response_model=ApiResponse[PaginatedJobPostingResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Search vacancies with full-text indexing, multi-attribute filters, and sorting (SKL-5)",
+)
+def search_jobs(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    size: int = Query(default=8, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(default=None, description="Keyword search query across title, description, requirements, location, company"),
+    posting_type: Optional[str] = Query(default=None, description="Filter by Job or Internship"),
+    work_mode: Optional[str] = Query(default=None, description="Filter by On-site, Remote, Hybrid"),
+    category: Optional[str] = Query(default=None, description="Filter by category"),
+    experience_level: Optional[str] = Query(default=None, description="Filter by seniority level"),
+    location: Optional[str] = Query(default=None, description="Filter by location"),
+    min_salary: Optional[int] = Query(default=None, ge=0, description="Minimum salary bracket in BDT"),
+    max_salary: Optional[int] = Query(default=None, ge=0, description="Maximum salary bracket in BDT"),
+    sort_by: Optional[str] = Query(default="recent", description="Sort order: recent, salary_high, deadline"),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+) -> ApiResponse[PaginatedJobPostingResponse]:
+    """Search active vacancies from verified corporate companies with debounce support and dynamic sorting (SKL-5)."""
+    result = job_service.search_jobs(
+        db=db,
+        page=page,
+        size=size,
+        search=search,
+        posting_type=posting_type,
+        work_mode=work_mode,
+        category=category,
+        experience_level=experience_level,
+        location=location,
+        min_salary=min_salary,
+        max_salary=max_salary,
+        sort_by=sort_by,
+        current_user=current_user,
+    )
+    return ApiResponse[PaginatedJobPostingResponse](
+        success=True,
+        message="Search results retrieved successfully",
+        data=result,
+    )
+
+
+@router.get(
+    "/taxonomies",
+    response_model=ApiResponse[JobTaxonomiesResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Fetch filter facets and taxonomies for vacancy search (SKL-5)",
+)
+def get_taxonomies(
+    db: Session = Depends(get_db),
+) -> ApiResponse[JobTaxonomiesResponse]:
+    """Return available search facets, categories, work modes, and salary bands (SKL-5)."""
+    taxonomies = job_service.get_taxonomies(db=db)
+    return ApiResponse[JobTaxonomiesResponse](
+        success=True,
+        message="Job taxonomies retrieved successfully",
+        data=JobTaxonomiesResponse(**taxonomies),
     )
 
 

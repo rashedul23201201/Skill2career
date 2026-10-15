@@ -28,6 +28,8 @@ class JobPostingCreateRequest(BaseModel):
     requirements: str = Field(min_length=5, description="Required competencies, degrees, or qualifications")
     skills: Optional[List[str]] = Field(default=[], description="List of required key skills/tags")
     compensation: str = Field(min_length=2, max_length=100, description="Salary bracket or stipend range")
+    salary_min: Optional[int] = Field(default=None, ge=0, description="Minimum salary/stipend in BDT")
+    salary_max: Optional[int] = Field(default=None, ge=0, description="Maximum salary/stipend in BDT")
     duration: Optional[str] = Field(default=None, max_length=100, description="Internship duration (e.g. 3 Months)")
     experience_level: JobExperienceLevel = Field(default=JobExperienceLevel.ENTRY_LEVEL, description="Seniority level")
     category: str = Field(default="Software Engineering", min_length=2, max_length=100, description="Domain category")
@@ -67,6 +69,8 @@ class JobPostingUpdateRequest(BaseModel):
     requirements: Optional[str] = Field(default=None, min_length=5)
     skills: Optional[List[str]] = None
     compensation: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    salary_min: Optional[int] = Field(default=None, ge=0)
+    salary_max: Optional[int] = Field(default=None, ge=0)
     duration: Optional[str] = None
     experience_level: Optional[JobExperienceLevel] = None
     category: Optional[str] = Field(default=None, min_length=2, max_length=100)
@@ -119,6 +123,8 @@ class JobPostingResponse(BaseModel):
     requirements: str
     skills: Optional[List[str]] = []
     compensation: str
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
     duration: Optional[str] = None
     experience_level: str
     category: str
@@ -138,3 +144,19 @@ class PaginatedJobPostingResponse(BaseModel):
     page: int
     size: int
     total_pages: int
+
+
+class JobTaxonomyPreset(BaseModel):
+    label: str
+    min_salary: Optional[int] = None
+    max_salary: Optional[int] = None
+
+
+class JobTaxonomiesResponse(BaseModel):
+    """Available search and filter taxonomies for vacancy exploration (SKL-5)."""
+    posting_types: List[str]
+    work_modes: List[str]
+    experience_levels: List[str]
+    categories: List[str]
+    locations: List[str]
+    salary_presets: List[JobTaxonomyPreset]
