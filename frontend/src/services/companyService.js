@@ -95,6 +95,51 @@ export const companyService = {
     const response = await api.post("/companies/jobs", payload);
     return response.data;
   },
+
+  // ===============================================
+  // SKL-11: Recruiter Operations & Dashboard APIs
+  // ===============================================
+
+  /**
+   * Fetch aggregated recruitment metrics & stage breakdown (SKL-11 AC-1).
+   */
+  async getDashboardMetrics(targetCompanyId) {
+    const params = targetCompanyId ? { target_company_id: targetCompanyId } : {};
+    const response = await api.get("/companies/dashboard/metrics", { params });
+    return response.data;
+  },
+
+  /**
+   * Fetch active company vacancies with stage breakdown volumes (SKL-11 AC-2).
+   */
+  async getDashboardVacancies(params = {}) {
+    const response = await api.get("/companies/dashboard/vacancies", { params });
+    return response.data;
+  },
+
+  /**
+   * Fetch chronological candidate activity feed (SKL-11 AC-3).
+   */
+  async getDashboardRecentActivity(params = {}) {
+    const response = await api.get("/companies/dashboard/recent-activity", { params });
+    return response.data;
+  },
+
+  /**
+   * Fetch company profile status and verification requirement flags (SKL-11 AC-4).
+   */
+  async getDashboardProfileStatus() {
+    const response = await api.get("/companies/dashboard/profile-status");
+    return response.data;
+  },
+
+  /**
+   * Fetch upcoming scheduled interview sessions for dashboard widget.
+   */
+  async getDashboardUpcomingInterviews(params = {}) {
+    const response = await api.get("/companies/dashboard/upcoming-interviews", { params });
+    return response.data;
+  },
 };
 
 export default companyService;
