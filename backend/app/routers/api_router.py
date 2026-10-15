@@ -21,6 +21,7 @@ from app.routers.interview import router as interview_router
 from app.routers.subscription import router as subscription_router
 from app.routers.transaction import router as transaction_router, admin_router as admin_transaction_router
 from app.routers.moderation import router as moderation_router
+from app.routers.company_dashboard import router as company_dashboard_router
 
 api_router = APIRouter()
 
@@ -45,6 +46,7 @@ api_router.include_router(interview_router)
 api_router.include_router(subscription_router)
 api_router.include_router(transaction_router)
 api_router.include_router(admin_transaction_router)
+api_router.include_router(company_dashboard_router)
 
 router = api_router
 

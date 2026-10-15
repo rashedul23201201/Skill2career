@@ -222,3 +222,19 @@ class JobCreateRequest(BaseModel):
     job_type: Optional[str] = Field("Full-time", max_length=50)
     location: Optional[str] = Field("Dhaka, Bangladesh", max_length=100)
     salary_range: Optional[str] = Field(None, max_length=100)
+
+
+# ===============================================
+# SKL-11: Company Dashboard Schemas Exports
+# ===============================================
+from app.schemas.company_dashboard import (
+    CompanyDashboardMetricsResponse,
+    CompanyDashboardVacancyItem,
+    CompanyDashboardVacanciesResponse,
+    CandidateActivityEvent,
+    CompanyDashboardActivityResponse,
+    CompanyDashboardProfileStatusResponse,
+    CompanyDashboardUpcomingInterviewItem,
+    DashboardStageBreakdown,
+    VacancyStageCounts,
+)
