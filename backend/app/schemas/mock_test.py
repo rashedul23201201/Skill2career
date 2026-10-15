@@ -67,6 +67,7 @@ class MockTestCreateRequest(BaseModel):
     duration_minutes: int = Field(default=60, ge=1, le=360, description="Time limit in minutes")
     passing_score: int = Field(default=50, ge=1, le=100, description="Passing score percentage (e.g. 50%)")
     status: MockTestStatus = Field(default=MockTestStatus.DRAFT, description="Initial publication status")
+    is_premium: bool = Field(default=False, description="Whether test requires active Pro subscription")
 
     model_config = ConfigDict(extra="ignore")
 
@@ -83,6 +84,7 @@ class MockTestUpdateRequest(BaseModel):
     duration_minutes: Optional[int] = Field(default=None, ge=1, le=360)
     passing_score: Optional[int] = Field(default=None, ge=1, le=100)
     status: Optional[MockTestStatus] = None
+    is_premium: Optional[bool] = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -115,6 +117,7 @@ class MockTestResponse(BaseModel):
     total_questions: int = 0
     status: str
     is_published: bool
+    is_premium: bool = False
     created_at: datetime
     updated_at: datetime
 

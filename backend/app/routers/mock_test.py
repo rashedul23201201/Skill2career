@@ -277,6 +277,12 @@ def sync_questions(
     status_code=status.HTTP_201_CREATED,
     summary="Start or resume a mock test attempt with timer (SKL-57 AC-1)",
 )
+@router.post(
+    "/{test_id}/attempts",
+    response_model=ApiResponse[TestAttemptStartResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Start mock test attempt alias (SKL-19 / SKL-57)",
+)
 def start_attempt(
     test_id: int,
     db: Session = Depends(get_db),

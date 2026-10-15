@@ -30,6 +30,7 @@ import MockTestAttempt from "../pages/MockTestAttempt";
 import TestResult from "../pages/TestResult";
 import Forum from "../pages/Forum";
 import ForumPostDetail from "../pages/ForumPostDetail";
+import Subscription from "../pages/Subscription";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -323,6 +324,24 @@ export const AppRoutes = () => {
         {/* Public Company Profile Route (SKL-3) */}
         <Route path="/companies/:id" element={<CompanyPublicProfile />} />
         <Route path="/company/:id" element={<CompanyPublicProfile />} />
+
+        {/* Sprint 3 Subscription & Payment Routes (SKL-19 / SKL-21) */}
+        <Route
+          path={ROUTES.SUBSCRIPTION}
+          element={
+            <ProtectedRoute>
+              <Subscription />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/billing"
+          element={
+            <ProtectedRoute>
+              <Subscription />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />

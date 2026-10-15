@@ -60,5 +60,7 @@ export const ROUTES = {
   APPLICATIONS: "/applications",
   INTERVIEWS: "/learner/interviews",
   RECRUITMENT: "/interviews",
+  SUBSCRIPTION: "/subscription",
+  BILLING: "/billing",
 };
 

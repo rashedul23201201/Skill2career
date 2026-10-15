@@ -26,6 +26,7 @@ class MockTest(Base):
     total_questions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default=MockTestStatus.DRAFT.value, nullable=False, index=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_premium: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
