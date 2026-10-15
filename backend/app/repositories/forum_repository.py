@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional, List, Tuple, Set
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session, joinedload
@@ -85,6 +86,7 @@ class ForumRepository:
         size: int = 10,
         category_id: Optional[int] = None,
         search: Optional[str] = None,
+        has_verified_answer: Optional[bool] = None,
     ) -> Tuple[List[ForumPost], int]:
         base_stmt = select(ForumPost).options(
             joinedload(ForumPost.author),
@@ -94,6 +96,9 @@ class ForumRepository:
         filters = []
         if category_id is not None:
             filters.append(ForumPost.category_id == category_id)
+
+        if has_verified_answer is not None:
+            filters.append(ForumPost.has_verified_answer == has_verified_answer)
 
         if search and search.strip():
             term = f"%{search.strip()}%"
@@ -134,7 +139,7 @@ class ForumRepository:
         db.commit()
         db.refresh(comment)
 
-        # Update post replies_count
+        # Update post replies_count and verified status
         post = db.get(ForumPost, comment.post_id)
         if post:
             post.replies_count += 1
@@ -143,6 +148,8 @@ class ForumRepository:
                 if comment.author:
                     author_name = f"{comment.author.first_name} {comment.author.last_name}".strip()
                     post.instructor_reply_name = author_name
+            if comment.is_verified:
+                post.has_verified_answer = True
             db.commit()
             db.refresh(post)
 
@@ -152,18 +159,25 @@ class ForumRepository:
     def get_comment_by_id(db: Session, comment_id: int) -> Optional[ForumComment]:
         stmt = (
             select(ForumComment)
-            .options(joinedload(ForumComment.author))
+            .options(
+                joinedload(ForumComment.author),
+                joinedload(ForumComment.verified_by),
+            )
             .where(ForumComment.id == comment_id)
         )
         return db.execute(stmt).unique().scalar_one_or_none()
 
     @staticmethod
     def get_comments_by_post(db: Session, post_id: int) -> List[ForumComment]:
+        # Pinned verified answers appear first (AC-3), then chronological
         stmt = (
             select(ForumComment)
-            .options(joinedload(ForumComment.author))
+            .options(
+                joinedload(ForumComment.author),
+                joinedload(ForumComment.verified_by),
+            )
             .where(ForumComment.post_id == post_id)
-            .order_by(ForumComment.created_at.asc())
+            .order_by(ForumComment.is_verified.desc(), ForumComment.created_at.asc())
         )
         return list(db.execute(stmt).unique().scalars().all())
 
@@ -174,12 +188,45 @@ class ForumRepository:
         return comment
 
     @staticmethod
+    def verify_comment(
+        db: Session,
+        comment: ForumComment,
+        verifier: User,
+        is_verified: bool = True,
+    ) -> ForumComment:
+        """Mark or unmark a comment as verified by an authorized Instructor or Admin (SKL-15 AC-2, AC-5, AC-6)."""
+        comment.is_verified = is_verified
+        if is_verified:
+            comment.verified_by_id = verifier.id
+            comment.verified_at = datetime.now(timezone.utc)
+        else:
+            comment.verified_by_id = None
+            comment.verified_at = None
+
+        db.commit()
+        db.refresh(comment)
+
+        # Recalculate post.has_verified_answer
+        post = db.get(ForumPost, comment.post_id)
+        if post:
+            cnt_stmt = select(func.count(ForumComment.id)).where(
+                ForumComment.post_id == comment.post_id,
+                ForumComment.is_verified.is_(True),
+            )
+            verified_count = db.execute(cnt_stmt).scalar() or 0
+            post.has_verified_answer = (verified_count > 0)
+            db.commit()
+            db.refresh(post)
+
+        return comment
+
+    @staticmethod
     def delete_comment(db: Session, comment: ForumComment) -> None:
         post_id = comment.post_id
         db.delete(comment)
         db.commit()
 
-        # Recalculate post reply count and instructor reply flag
+        # Recalculate post reply count, instructor reply flag, and verified answer flag
         post = db.get(ForumPost, post_id)
         if post:
             cnt_stmt = select(func.count(ForumComment.id)).where(ForumComment.post_id == post_id)
@@ -199,6 +246,14 @@ class ForumRepository:
             else:
                 post.has_instructor_reply = False
                 post.instructor_reply_name = None
+
+            # Check if any verified answers remain
+            ver_stmt = select(func.count(ForumComment.id)).where(
+                ForumComment.post_id == post_id,
+                ForumComment.is_verified.is_(True),
+            )
+            ver_count = db.execute(ver_stmt).scalar() or 0
+            post.has_verified_answer = (ver_count > 0)
 
             db.commit()
 

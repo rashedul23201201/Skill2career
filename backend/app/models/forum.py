@@ -43,6 +43,7 @@ class ForumPost(Base):
     replies_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     has_instructor_reply: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     instructor_reply_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    has_verified_answer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
@@ -80,6 +81,9 @@ class ForumComment(Base):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
     is_instructor_reply: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    verified_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     likes_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -98,6 +102,7 @@ class ForumComment(Base):
 
     post = relationship("ForumPost", back_populates="comments")
     author = relationship("User", foreign_keys=[author_id], backref="forum_comments")
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
     parent = relationship("ForumComment", remote_side=[id], backref="replies")
     likes = relationship("ForumLike", back_populates="comment", cascade="all, delete-orphan")
     reports = relationship("ForumReport", back_populates="comment", cascade="all, delete-orphan")

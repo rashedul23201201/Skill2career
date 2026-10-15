@@ -30,6 +30,8 @@ class ForumAuthorResponse(BaseModel):
     email: str
     role: UserRole
     avatar_url: Optional[str] = None
+    designation: Optional[str] = None
+    institution: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,10 +51,16 @@ class ForumPostUpdate(BaseModel):
 class ForumCommentCreate(BaseModel):
     content: str = Field(..., min_length=2, description="Comment response content")
     parent_id: Optional[int] = Field(None, description="Optional parent comment ID for threading")
+    mark_as_verified: Optional[bool] = Field(False, description="Whether to mark this answer as verified if author is Instructor/Admin")
 
 
 class ForumCommentUpdate(BaseModel):
     content: str = Field(..., min_length=2, description="Updated comment content")
+
+
+class ForumCommentVerifyRequest(BaseModel):
+    is_verified: bool = Field(True, description="True to mark as verified, False to unmark")
+    note: Optional[str] = Field(None, max_length=255, description="Optional verification note")
 
 
 class ForumCommentResponse(BaseModel):
@@ -62,6 +70,9 @@ class ForumCommentResponse(BaseModel):
     parent_id: Optional[int] = None
     content: str
     is_instructor_reply: bool = False
+    is_verified: bool = False
+    verified_by: Optional[ForumAuthorResponse] = None
+    verified_at: Optional[datetime] = None
     likes_count: int = 0
     is_liked_by_me: bool = False
     created_at: datetime
@@ -82,6 +93,7 @@ class ForumPostResponse(BaseModel):
     replies_count: int = 0
     has_instructor_reply: bool = False
     instructor_reply_name: Optional[str] = None
+    has_verified_answer: bool = False
     is_pinned: bool = False
     is_locked: bool = False
     is_liked_by_me: bool = False

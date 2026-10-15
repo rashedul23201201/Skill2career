@@ -61,6 +61,11 @@ export const forumService = {
     return response.data;
   },
 
+  async verifyComment(commentId, payload = { is_verified: true }) {
+    const response = await api.patch(`/forum/comments/${commentId}/verify`, payload);
+    return response.data;
+  },
+
   async createReport(reportData) {
     const response = await api.post("/forum/reports", reportData);
     return response.data;

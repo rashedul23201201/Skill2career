@@ -1,4 +1,5 @@
 import math
+from datetime import datetime, timezone
 from typing import Optional, List, Tuple, Set
 from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException
@@ -23,20 +24,30 @@ from app.schemas.forum import (
 
 
 class ForumService:
-    """Service handling business logic, permissions, and moderation for Discussion Forum (SKL-14)."""
+    """Service handling business logic, permissions, and moderation for Discussion Forum (SKL-14 & SKL-15)."""
 
     def __init__(self, repository: Optional[ForumRepository] = None):
         self.repo = repository or ForumRepository()
 
-    def _build_author_response(self, user: User) -> ForumAuthorResponse:
+    def _build_author_response(self, user: Optional[User]) -> Optional[ForumAuthorResponse]:
+        if not user:
+            return None
         name = f"{user.first_name} {user.last_name}".strip()
         avatar = getattr(user, "avatar_url", None)
+        designation = None
+        institution = None
+        if hasattr(user, "instructor_profile") and user.instructor_profile:
+            designation = user.instructor_profile.designation
+            institution = user.instructor_profile.institution
+
         return ForumAuthorResponse(
             id=user.id,
             name=name if name else user.email.split("@")[0],
             email=user.email,
             role=user.role,
             avatar_url=avatar,
+            designation=designation,
+            institution=institution,
         )
 
     def _build_post_response(
@@ -61,6 +72,7 @@ class ForumService:
             replies_count=post.replies_count,
             has_instructor_reply=post.has_instructor_reply,
             instructor_reply_name=post.instructor_reply_name,
+            has_verified_answer=post.has_verified_answer,
             is_pinned=post.is_pinned,
             is_locked=post.is_locked,
             is_liked_by_me=is_liked,
@@ -77,6 +89,10 @@ class ForumService:
         if liked_comment_ids is not None:
             is_liked = comment.id in liked_comment_ids
 
+        verified_by_author = None
+        if comment.verified_by:
+            verified_by_author = self._build_author_response(comment.verified_by)
+
         return ForumCommentResponse(
             id=comment.id,
             post_id=comment.post_id,
@@ -84,6 +100,9 @@ class ForumService:
             parent_id=comment.parent_id,
             content=comment.content,
             is_instructor_reply=comment.is_instructor_reply,
+            is_verified=comment.is_verified,
+            verified_by=verified_by_author,
+            verified_at=comment.verified_at,
             likes_count=comment.likes_count,
             is_liked_by_me=is_liked,
             created_at=comment.created_at,
@@ -114,6 +133,7 @@ class ForumService:
         size: int = 10,
         category_id: Optional[int] = None,
         search: Optional[str] = None,
+        has_verified_answer: Optional[bool] = None,
         current_user: Optional[User] = None,
     ) -> PaginatedForumPostResponse:
         page = max(1, page)
@@ -125,6 +145,7 @@ class ForumService:
             size=size,
             category_id=category_id,
             search=search,
+            has_verified_answer=has_verified_answer,
         )
 
         liked_ids: Set[int] = set()
@@ -196,6 +217,7 @@ class ForumService:
             replies_count=post.replies_count,
             has_instructor_reply=post.has_instructor_reply,
             instructor_reply_name=post.instructor_reply_name,
+            has_verified_answer=post.has_verified_answer,
             is_pinned=post.is_pinned,
             is_locked=post.is_locked,
             is_liked_by_me=is_post_liked,
@@ -296,6 +318,20 @@ class ForumService:
 
         # AC-3: Check if comment author is Instructor
         is_instructor = (current_user.role == UserRole.INSTRUCTOR)
+        is_verified = False
+        verified_by_id = None
+        verified_at = None
+
+        if request.mark_as_verified:
+            # AC-5: Given a user without Instructor or Admin permission, when they attempt to create or mark a verified answer, then the system shall reject the request.
+            if current_user.role not in [UserRole.INSTRUCTOR, UserRole.ADMIN]:
+                raise ForbiddenException(
+                    "Only verified instructors and administrators can create or mark verified answers",
+                    error_code="FORBIDDEN_ACTION",
+                )
+            is_verified = True
+            verified_by_id = current_user.id
+            verified_at = datetime.now(timezone.utc)
 
         comment = ForumComment(
             post_id=post_id,
@@ -303,9 +339,39 @@ class ForumService:
             parent_id=request.parent_id,
             content=request.content.strip(),
             is_instructor_reply=is_instructor,
+            is_verified=is_verified,
+            verified_by_id=verified_by_id,
+            verified_at=verified_at,
         )
         created = self.repo.create_comment(db, comment)
         return self._build_comment_response(created)
+
+    def verify_comment(
+        self,
+        db: Session,
+        comment_id: int,
+        current_user: User,
+        is_verified: bool = True,
+    ) -> ForumCommentResponse:
+        """Mark or unmark a comment as verified (SKL-15 AC-2, AC-5)."""
+        # AC-5: Given a user without Instructor or Admin permission, when they attempt to create or mark a verified answer, then the system shall reject the request.
+        if current_user.role not in [UserRole.INSTRUCTOR, UserRole.ADMIN]:
+            raise ForbiddenException(
+                "Only verified instructors and administrators can mark answers as verified",
+                error_code="FORBIDDEN_ACTION",
+            )
+
+        comment = self.repo.get_comment_by_id(db, comment_id)
+        if not comment:
+            raise NotFoundException("Comment not found")
+
+        updated = self.repo.verify_comment(
+            db=db,
+            comment=comment,
+            verifier=current_user,
+            is_verified=is_verified,
+        )
+        return self._build_comment_response(updated)
 
     def update_comment(
         self,
