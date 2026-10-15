@@ -33,6 +33,9 @@ export const Forum = () => {
   const [activeCategory, setActiveCategory] = useState(
     searchParams.get("category_id") ? Number(searchParams.get("category_id")) : null
   );
+  const [onlyVerified, setOnlyVerified] = useState(
+    searchParams.get("has_verified_answer") === "true"
+  );
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
   const [appliedSearch, setAppliedSearch] = useState(searchParams.get("search") || "");
 
@@ -84,6 +87,9 @@ export const Forum = () => {
       if (activeCategory) {
         params.category_id = activeCategory;
       }
+      if (onlyVerified) {
+        params.has_verified_answer = true;
+      }
       if (appliedSearch.trim()) {
         params.search = appliedSearch.trim();
       }
@@ -103,7 +109,7 @@ export const Forum = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, activeCategory, appliedSearch]);
+  }, [page, activeCategory, appliedSearch, onlyVerified]);
 
   useEffect(() => {
     fetchCategories();
@@ -112,6 +118,21 @@ export const Forum = () => {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  const handleToggleVerified = (val) => {
+    setOnlyVerified(val);
+    setPage(1);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (val) {
+        next.set("has_verified_answer", "true");
+      } else {
+        next.delete("has_verified_answer");
+      }
+      next.set("page", "1");
+      return next;
+    });
+  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -409,6 +430,40 @@ export const Forum = () => {
               </div>
             </div>
 
+            {/* Verification Filter Card */}
+            <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Quality Filter
+                </h3>
+                {onlyVerified && (
+                  <button
+                    onClick={() => handleToggleVerified(false)}
+                    className="text-[11px] font-medium text-emerald-700 hover:text-emerald-900"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleVerified(!onlyVerified)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  onlyVerified
+                    ? "bg-emerald-800 text-white shadow-xs"
+                    : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2
+                    className={`w-4 h-4 ${onlyVerified ? "text-emerald-300" : "text-emerald-600"}`}
+                  />
+                  <span>Verified Answers Only</span>
+                </div>
+                {onlyVerified && <Check className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
             {/* Academic Guidelines Card matching Forum.png */}
             <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs">
               <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm mb-1.5">
@@ -423,6 +478,26 @@ export const Forum = () => {
 
           {/* Right Post Feed */}
           <div className="lg:col-span-3 space-y-4">
+            {/* Active Verified Filter Indicator */}
+            {onlyVerified && (
+              <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium">
+                    Filtering for discussions with <strong className="font-semibold">Instructor Verified Answers</strong>.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleVerified(false)}
+                  className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-900 ml-2"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Clear</span>
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((n) => (
@@ -452,17 +527,28 @@ export const Forum = () => {
                 <MessageSquare className="w-10 h-10 mx-auto text-slate-300" />
                 <h3 className="text-base font-semibold text-slate-800">No discussions found</h3>
                 <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                  {appliedSearch
+                  {onlyVerified
+                    ? "No discussions with instructor-verified answers match the current selection."
+                    : appliedSearch
                     ? `No discussions match "${appliedSearch}". Try searching for another topic.`
                     : "Be the first to start a conversation in this category!"}
                 </p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-950 text-white text-xs font-semibold rounded-lg hover:bg-emerald-900 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Start Discussion</span>
-                </button>
+                {onlyVerified ? (
+                  <button
+                    onClick={() => handleToggleVerified(false)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                  >
+                    <span>View All Discussions</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-950 text-white text-xs font-semibold rounded-lg hover:bg-emerald-900 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Start Discussion</span>
+                  </button>
+                )}
               </div>
             ) : (
               posts.map((post) => {
@@ -474,7 +560,9 @@ export const Forum = () => {
                   <div
                     key={post.id}
                     onClick={() => navigate(`/forum/posts/${post.id}`)}
-                    className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs hover:border-slate-300 transition-all cursor-pointer group space-y-3"
+                    className={`bg-white rounded-xl border p-5 shadow-xs hover:border-slate-300 transition-all cursor-pointer group space-y-3 ${
+                      post.has_verified_answer ? "border-emerald-200/70" : "border-slate-200/80"
+                    }`}
                   >
                     {/* Top Row: Title + Category Badge */}
                     <div className="flex items-start justify-between gap-4">
@@ -486,8 +574,23 @@ export const Forum = () => {
                       </span>
                     </div>
 
-                    {/* Instructor Reply Banner matching Forum.png */}
-                    {post.has_instructor_reply && (
+                    {/* Verified Answer / Instructor Reply Banner matching Forum.png */}
+                    {post.has_verified_answer ? (
+                      <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 text-xs font-medium">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-semibold text-emerald-900">
+                            {post.instructor_reply_name
+                              ? `${post.instructor_reply_name} answered`
+                              : "Instructor Verified Answer"}
+                          </span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 font-bold text-[11px] text-emerald-700 uppercase tracking-wider bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          Verified Answer
+                        </span>
+                      </div>
+                    ) : post.has_instructor_reply ? (
                       <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50/90 border border-emerald-100 rounded-lg text-emerald-800 text-xs font-medium">
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -501,7 +604,7 @@ export const Forum = () => {
                           Instructor Reply
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Bottom Row: Author details + Replies / Likes Counters */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs text-slate-500">

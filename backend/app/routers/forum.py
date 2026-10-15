@@ -15,6 +15,7 @@ from app.schemas.forum import (
     PaginatedForumPostResponse,
     ForumCommentCreate,
     ForumCommentUpdate,
+    ForumCommentVerifyRequest,
     ForumCommentResponse,
     ForumLikeToggleResponse,
     ForumReportCreate,
@@ -23,7 +24,7 @@ from app.schemas.forum import (
 )
 from app.services.forum_service import ForumService
 
-router = APIRouter(prefix="/forum", tags=["Discussion Forum (SKL-14)"])
+router = APIRouter(prefix="/forum", tags=["Discussion Forum & Verified Answers (SKL-14 & SKL-15)"])
 forum_service = ForumService()
 
 
@@ -48,13 +49,14 @@ def get_categories(
     "/posts",
     response_model=ApiResponse[PaginatedForumPostResponse],
     status_code=status.HTTP_200_OK,
-    summary="List paginated discussion posts with filters and search (SKL-14 AC-1, AC-5)",
+    summary="List paginated discussion posts with filters, search, and verified status (SKL-14 AC-1, SKL-15 AC-3)",
 )
 def get_posts(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Items per page"),
     category_id: Optional[int] = Query(None, description="Optional category filter"),
     search: Optional[str] = Query(None, description="Search term for title, content, or author"),
+    has_verified_answer: Optional[bool] = Query(None, description="Filter posts with verified answers (SKL-15 AC-3)"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ApiResponse[PaginatedForumPostResponse]:
@@ -64,6 +66,7 @@ def get_posts(
         size=size,
         category_id=category_id,
         search=search,
+        has_verified_answer=has_verified_answer,
         current_user=current_user,
     )
     return ApiResponse[PaginatedForumPostResponse](
@@ -244,6 +247,33 @@ def toggle_comment_like(
         success=True,
         message="Comment like updated successfully",
         data=result,
+    )
+
+
+@router.patch(
+    "/comments/{id}/verify",
+    response_model=ApiResponse[ForumCommentResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Mark or unmark a forum answer as verified by Instructor or Admin (SKL-15 AC-2, AC-5)",
+)
+def verify_comment(
+    id: int,
+    request: Optional[ForumCommentVerifyRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApiResponse[ForumCommentResponse]:
+    is_verified = request.is_verified if request is not None else True
+    updated = forum_service.verify_comment(
+        db=db,
+        comment_id=id,
+        current_user=current_user,
+        is_verified=is_verified,
+    )
+    action = "marked as verified" if is_verified else "unmarked as verified"
+    return ApiResponse[ForumCommentResponse](
+        success=True,
+        message=f"Answer successfully {action}",
+        data=updated,
     )
 
 

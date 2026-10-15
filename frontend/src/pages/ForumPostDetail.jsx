@@ -18,6 +18,7 @@ import {
   Send,
   GraduationCap,
   Shield,
+  ShieldCheck,
 } from "lucide-react";
 
 export const ForumPostDetail = () => {
@@ -33,6 +34,10 @@ export const ForumPostDetail = () => {
   const [commentText, setCommentText] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState(null);
+  const [markAsVerified, setMarkAsVerified] = useState(false);
+
+  // Comment verification action state
+  const [verifyingCommentId, setVerifyingCommentId] = useState(null);
 
   // Edit post state
   const [isEditingPost, setIsEditingPost] = useState(false);
@@ -129,26 +134,79 @@ export const ForumPostDetail = () => {
     try {
       setCommentSubmitting(true);
       setCommentError(null);
-      const res = await forumService.addComment(post.id, {
+      const payload = {
         content: commentText.trim(),
-      });
+      };
+      if ((user?.role === USER_ROLES.INSTRUCTOR || user?.role === USER_ROLES.ADMIN) && markAsVerified) {
+        payload.mark_as_verified = true;
+      }
+      const res = await forumService.addComment(post.id, payload);
       if (res?.data) {
-        setPost((prev) => ({
-          ...prev,
-          replies_count: prev.replies_count + 1,
-          has_instructor_reply: prev.has_instructor_reply || res.data.is_instructor_reply,
-          instructor_reply_name:
-            res.data.is_instructor_reply && !prev.instructor_reply_name
-              ? res.data.author.name
-              : prev.instructor_reply_name,
-          comments: [...prev.comments, res.data],
-        }));
+        setPost((prev) => {
+          const updatedComments = [...(prev.comments || []), res.data];
+          // Pinned verified sort: is_verified DESC, created_at ASC
+          updatedComments.sort((a, b) => {
+            if (a.is_verified === b.is_verified) {
+              return new Date(a.created_at) - new Date(b.created_at);
+            }
+            return a.is_verified ? -1 : 1;
+          });
+          const hasVerified = updatedComments.some((c) => c.is_verified);
+          return {
+            ...prev,
+            replies_count: prev.replies_count + 1,
+            has_instructor_reply: prev.has_instructor_reply || res.data.is_instructor_reply,
+            has_verified_answer: hasVerified,
+            instructor_reply_name:
+              res.data.is_instructor_reply && !prev.instructor_reply_name
+                ? res.data.author.name
+                : prev.instructor_reply_name,
+            comments: updatedComments,
+          };
+        });
         setCommentText("");
+        setMarkAsVerified(false);
       }
     } catch (err) {
       setCommentError(err.response?.data?.message || "Failed to submit comment.");
     } finally {
       setCommentSubmitting(false);
+    }
+  };
+
+  const handleVerifyComment = async (commentId, currentVerifiedStatus) => {
+    if (!isAuthenticated) {
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+    try {
+      setVerifyingCommentId(commentId);
+      const targetState = !currentVerifiedStatus;
+      const res = await forumService.verifyComment(commentId, { is_verified: targetState });
+      if (res?.data) {
+        setPost((prev) => {
+          const updatedComments = (prev.comments || []).map((c) =>
+            c.id === commentId ? { ...c, ...res.data } : c
+          );
+          // Pinned verified sort: is_verified DESC, created_at ASC
+          updatedComments.sort((a, b) => {
+            if (a.is_verified === b.is_verified) {
+              return new Date(a.created_at) - new Date(b.created_at);
+            }
+            return a.is_verified ? -1 : 1;
+          });
+          const hasVerified = updatedComments.some((c) => c.is_verified);
+          return {
+            ...prev,
+            has_verified_answer: hasVerified,
+            comments: updatedComments,
+          };
+        });
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update verification status.");
+    } finally {
+      setVerifyingCommentId(null);
     }
   };
 
@@ -366,22 +424,37 @@ export const ForumPostDetail = () => {
             </h1>
           )}
 
-          {/* Instructor Reply Banner if exists */}
-          {post.has_instructor_reply && (
-            <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-800 text-xs font-medium">
+          {/* Verified Answer / Instructor Reply Banner */}
+          {post.has_verified_answer ? (
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 text-xs font-medium">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  {post.instructor_reply_name
+                    ? `${post.instructor_reply_name} answered with verified guidance`
+                    : "Verified instructor answered this discussion"}
+                </span>
+              </div>
+              <span className="font-semibold text-[11px] text-emerald-700 uppercase tracking-wider bg-emerald-100 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Verified Answer
+              </span>
+            </div>
+          ) : post.has_instructor_reply ? (
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50/90 border border-emerald-100 rounded-lg text-emerald-800 text-xs font-medium">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
                   {post.instructor_reply_name
                     ? `${post.instructor_reply_name} answered this discussion`
-                    : "Verified instructor answered"}
+                    : "Instructor answered"}
                 </span>
               </div>
               <span className="font-semibold text-[11px] text-emerald-700 uppercase tracking-wider bg-emerald-100/60 px-2 py-0.5 rounded-full">
                 Instructor Reply
               </span>
             </div>
-          )}
+          ) : null}
 
           {/* Author info row */}
           <div className="flex items-center justify-between py-2 border-y border-slate-100 text-xs">
@@ -410,6 +483,11 @@ export const ForumPostDetail = () => {
                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
                       <Shield className="w-3 h-3" />
                       Admin
+                    </span>
+                  )}
+                  {(post.author.designation || post.author.institution) && (
+                    <span className="text-slate-400 text-[11px] hidden sm:inline">
+                      · {post.author.designation || post.author.institution}
                     </span>
                   )}
                 </div>
@@ -527,7 +605,21 @@ export const ForumPostDetail = () => {
                   onChange={(e) => setCommentText(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 resize-y"
                 />
-                <div className="flex items-center justify-end">
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {(isInstructor || isAdmin) ? (
+                    <label className="inline-flex items-center gap-2 text-xs font-medium text-emerald-900 cursor-pointer select-none bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-lg">
+                      <input
+                        type="checkbox"
+                        checked={markAsVerified}
+                        onChange={(e) => setMarkAsVerified(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 rounded border-emerald-300 focus:ring-emerald-500"
+                      />
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Mark this response as an <strong>Instructor Verified Answer</strong></span>
+                    </label>
+                  ) : <div />}
+
                   <button
                     type="submit"
                     disabled={commentSubmitting || !commentText.trim()}
@@ -565,19 +657,41 @@ export const ForumPostDetail = () => {
                 return (
                   <div
                     key={comment.id}
-                    className={`bg-white rounded-xl border p-5 shadow-xs space-y-3 transition-colors ${
-                      comment.is_instructor_reply
-                        ? "border-emerald-200/90 bg-emerald-50/20"
-                        : "border-slate-200/80"
+                    className={`rounded-xl border p-5 shadow-xs space-y-3 transition-colors ${
+                      comment.is_verified
+                        ? "border-emerald-300 bg-emerald-50/20 ring-1 ring-emerald-200/50"
+                        : comment.is_instructor_reply
+                        ? "border-emerald-200/80 bg-emerald-50/15"
+                        : "bg-white border-slate-200/80"
                     }`}
                   >
-                    {/* Instructor Badge header on comment */}
-                    {comment.is_instructor_reply && (
+                    {/* Verified Answer Banner or Instructor Badge */}
+                    {comment.is_verified ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-emerald-100/70 border border-emerald-200 rounded-lg text-emerald-900 text-xs">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <span className="font-bold text-emerald-900">
+                            Instructor Verified Answer
+                          </span>
+                          {comment.verified_by && (
+                            <span className="text-emerald-800 text-[11px]">
+                              · Verified by <strong className="font-semibold">{comment.verified_by.name}</strong>
+                              {comment.verified_by.designation && ` (${comment.verified_by.designation})`}
+                            </span>
+                          )}
+                        </div>
+                        {comment.verified_at && (
+                          <span className="text-[11px] text-emerald-700 font-medium">
+                            {formatRelativeTime(comment.verified_at)}
+                          </span>
+                        )}
+                      </div>
+                    ) : comment.is_instructor_reply ? (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100/70 text-emerald-800 rounded-md text-[11px] font-semibold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Verified Instructor Answer</span>
+                        <span>Instructor Reply</span>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Author row */}
                     <div className="flex items-center justify-between text-xs">
@@ -595,37 +709,73 @@ export const ForumPostDetail = () => {
                         </div>
                         <span className="font-semibold text-slate-900">{comment.author.name}</span>
                         {comment.author.role === USER_ROLES.INSTRUCTOR && (
-                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <GraduationCap className="w-3 h-3" />
                             Instructor
+                          </span>
+                        )}
+                        {(comment.author.designation || comment.author.institution) && (
+                          <span className="text-slate-400 text-[11px] hidden sm:inline">
+                            · {comment.author.designation || comment.author.institution}
                           </span>
                         )}
                         <span>·</span>
                         <span className="text-slate-400">{formatRelativeTime(comment.created_at)}</span>
                       </div>
 
-                      {canManageComment && editingCommentId !== comment.id && (
-                        <div className="flex items-center gap-1.5">
+                      {/* Right actions: Verify button (Instructor/Admin) + Owner edit/delete */}
+                      <div className="flex items-center gap-2">
+                        {(isInstructor || isAdmin) && (
                           <button
                             type="button"
-                            onClick={() => {
-                              setEditingCommentId(comment.id);
-                              setEditCommentText(comment.content);
-                            }}
-                            className="p-1 text-slate-400 hover:text-slate-700"
-                            title="Edit comment"
+                            onClick={() => handleVerifyComment(comment.id, comment.is_verified)}
+                            disabled={verifyingCommentId === comment.id}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                              comment.is_verified
+                                ? "bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300"
+                                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300"
+                            }`}
+                            title={
+                              comment.is_verified
+                                ? "Remove verified answer status"
+                                : "Mark as verified instructor answer"
+                            }
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>
+                              {verifyingCommentId === comment.id
+                                ? "Updating..."
+                                : comment.is_verified
+                                ? "Unmark Verified"
+                                : "Mark as Verified"}
+                            </span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="p-1 text-slate-400 hover:text-red-600"
-                            title="Delete comment"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
+                        )}
+
+                        {canManageComment && editingCommentId !== comment.id && (
+                          <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCommentId(comment.id);
+                                setEditCommentText(comment.content);
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-700"
+                              title="Edit comment"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="p-1 text-slate-400 hover:text-red-600"
+                              title="Delete comment"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Comment content */}
