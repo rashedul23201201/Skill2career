@@ -118,6 +118,10 @@ class MockTestResponse(BaseModel):
     status: str
     is_published: bool
     is_premium: bool = False
+    moderation_status: Optional[str] = "APPROVED"
+    moderation_notes: Optional[str] = None
+    moderated_by: Optional[int] = None
+    moderated_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

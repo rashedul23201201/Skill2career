@@ -64,6 +64,7 @@ class CourseRepository:
         status: Optional[str] = None,
         search: Optional[str] = None,
         instructor_id: Optional[int] = None,
+        moderation_status: Optional[str] = None,
     ) -> Tuple[List[Course], int]:
         """Query courses with pagination, domain filtering, full-text search, and instructor ownership."""
         statement = select(Course).options(
@@ -84,6 +85,10 @@ class CourseRepository:
         if status:
             statement = statement.where(Course.status == status)
             count_stmt = count_stmt.where(Course.status == status)
+
+        if moderation_status:
+            statement = statement.where(Course.moderation_status == moderation_status)
+            count_stmt = count_stmt.where(Course.moderation_status == moderation_status)
 
         if instructor_id:
             statement = statement.where(Course.instructor_id == instructor_id)

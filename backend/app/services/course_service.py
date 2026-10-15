@@ -16,6 +16,7 @@ from app.core.exceptions import (
 )
 from app.models.user import User, UserRole
 from app.models.course import Course, CourseModule, Lesson, CourseStatus, CourseLevel
+from app.models.moderation import ModerationStatus
 from app.repositories.course_repository import CourseRepository
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.schemas.course import (
@@ -72,6 +73,10 @@ class CourseService:
             price=course.price,
             is_free=course.is_free,
             status=course.status,
+            moderation_status=getattr(course, "moderation_status", "APPROVED") or "APPROVED",
+            moderation_notes=getattr(course, "moderation_notes", None),
+            moderated_by=getattr(course, "moderated_by", None),
+            moderated_at=getattr(course, "moderated_at", None),
             thumbnail_url=course.thumbnail_url,
             duration_weeks=course.duration_weeks,
             lessons_count=lessons_count,
@@ -161,13 +166,15 @@ class CourseService:
                 error_code="COURSE_NOT_FOUND",
             )
 
-        # If not published, only the authoring instructor or platform admin can view it
-        if course.status != CourseStatus.PUBLISHED.value:
+        # If not published or not approved, only the authoring instructor or platform admin can view it
+        is_published = (course.status == CourseStatus.PUBLISHED.value)
+        is_approved = (getattr(course, "moderation_status", ModerationStatus.APPROVED.value) == ModerationStatus.APPROVED.value)
+        if not is_published or not is_approved:
             if not current_user or (
                 current_user.id != course.instructor_id and current_user.role != UserRole.ADMIN
             ):
                 raise NotFoundException(
-                    message=f"Course with ID {course_id} is currently unavailable or unpublished",
+                    message=f"Course with ID {course_id} is currently unavailable or under review",
                     error_code="COURSE_NOT_AVAILABLE",
                 )
 
@@ -307,6 +314,8 @@ class CourseService:
         query_instructor_id: Optional[int] = None
         query_status: Optional[str] = None
 
+        query_moderation_status: Optional[str] = None
+
         if my_courses:
             if not current_user:
                 raise ForbiddenException(
@@ -318,8 +327,9 @@ class CourseService:
         elif current_user and current_user.role == UserRole.ADMIN:
             query_status = status  # Admin can filter by status or see all
         else:
-            # Public catalog: only PUBLISHED courses are visible
+            # Public catalog: only PUBLISHED and APPROVED courses are visible
             query_status = CourseStatus.PUBLISHED.value
+            query_moderation_status = ModerationStatus.APPROVED.value
 
         courses, total = self.course_repo.get_courses_paginated(
             db=db,
@@ -330,6 +340,7 @@ class CourseService:
             status=query_status,
             search=search,
             instructor_id=query_instructor_id,
+            moderation_status=query_moderation_status,
         )
 
         total_pages = math.ceil(total / size) if size > 0 else 0

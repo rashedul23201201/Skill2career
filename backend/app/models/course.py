@@ -39,6 +39,11 @@ class Course(Base):
     
     thumbnail_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     duration_weeks: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+
+    moderation_status: Mapped[str] = mapped_column(String(50), default="APPROVED", nullable=False, index=True)
+    moderated_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    moderation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    moderated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -56,6 +61,7 @@ class Course(Base):
 
     # Relationships
     instructor = relationship("User", foreign_keys=[instructor_id], backref="courses")
+    moderator = relationship("User", foreign_keys=[moderated_by])
     modules = relationship("CourseModule", back_populates="course", cascade="all, delete-orphan", order_by="CourseModule.order_index")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan", order_by="Lesson.order_index")
 
@@ -110,6 +116,11 @@ class Lesson(Base):
     attachments: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    moderation_status: Mapped[str] = mapped_column(String(50), default="APPROVED", nullable=False)
+    moderated_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    moderation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    moderated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

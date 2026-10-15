@@ -151,6 +151,12 @@ from app.schemas.subscription import (
     CancelSubscriptionRequest,
     InvoiceResponse,
 )
+from app.schemas.moderation import (
+    ModerationDecisionRequest,
+    ContentModerationLogResponse,
+    ModerationItemResponse,
+    PendingModerationResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -271,4 +277,8 @@ __all__ = [
     "TransactionVerifyRequest",
     "CancelSubscriptionRequest",
     "InvoiceResponse",
+    "ModerationDecisionRequest",
+    "ContentModerationLogResponse",
+    "ModerationItemResponse",
+    "PendingModerationResponse",
 ]

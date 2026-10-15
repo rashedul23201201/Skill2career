@@ -63,13 +63,19 @@ class MockTestRepository:
         instructor_id: Optional[int] = None,
         status: Optional[str] = None,
         is_published_only: bool = True,
+        moderation_status: Optional[str] = None,
     ) -> Tuple[List[MockTest], int]:
         base_stmt = select(MockTest).options(joinedload(MockTest.instructor))
 
         if is_published_only:
             base_stmt = base_stmt.where(MockTest.status == MockTestStatus.PUBLISHED.value)
+            if not moderation_status:
+                base_stmt = base_stmt.where(MockTest.moderation_status == "APPROVED")
         elif status:
             base_stmt = base_stmt.where(MockTest.status == status)
+
+        if moderation_status:
+            base_stmt = base_stmt.where(MockTest.moderation_status == moderation_status)
 
         if instructor_id:
             base_stmt = base_stmt.where(MockTest.instructor_id == instructor_id)

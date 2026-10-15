@@ -22,9 +22,12 @@ from app.schemas.mock_test import (
     TestResultResponse,
 )
 from app.services.mock_test_service import MockTestService
+from app.services.moderation_service import ModerationService
+from app.schemas.moderation import ModerationItemResponse
 
 router = APIRouter(prefix="/mock-tests", tags=["Mock Test Management (Assessments)"])
 mock_test_service = MockTestService()
+moderation_service = ModerationService()
 
 
 @router.post(
@@ -334,5 +337,28 @@ def get_mock_test_results(
         message="Mock test results retrieved successfully",
         data=results,
     )
+
+
+@router.post(
+    "/{test_id}/submit-review",
+    response_model=ApiResponse[ModerationItemResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Submit mock test for administrative moderation review (SKL-25)",
+)
+def submit_mock_test_for_review(
+    test_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.INSTRUCTOR, UserRole.ADMIN)),
+) -> ApiResponse[ModerationItemResponse]:
+    """Submit a mock test for administrative moderation review."""
+    result = moderation_service.submit_mock_test_for_review(
+        db=db, test_id=test_id, current_user=current_user
+    )
+    return ApiResponse[ModerationItemResponse](
+        success=True,
+        message="Mock test submitted for moderation review successfully",
+        data=result,
+    )
+
 
 
