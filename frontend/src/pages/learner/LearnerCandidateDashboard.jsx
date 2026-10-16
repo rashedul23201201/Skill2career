@@ -5,7 +5,10 @@ import courseService from "../../services/courseService";
 import learnerService from "../../services/learnerService";
 import applicationService from "../../services/applicationService";
 import interviewService from "../../services/interviewService";
+import jobService from "../../services/jobService";
 import { ROUTES } from "../../constants";
+import { RecommendedJobsCarousel } from "./RecommendedJobsCarousel";
+import { SavedJobsDrawer } from "./SavedJobsDrawer";
 import {
   BookOpen,
   RotateCw,
@@ -20,6 +23,7 @@ import {
   SlidersHorizontal,
   CheckCircle2,
   ChevronRight,
+  Bookmark,
 } from "lucide-react";
 
 export const LearnerCandidateDashboard = () => {
@@ -35,7 +39,20 @@ export const LearnerCandidateDashboard = () => {
     total: 0,
   });
   const [latestInterview, setLatestInterview] = useState(null);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
+  const [isSavedDrawerOpen, setIsSavedDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const refreshSavedJobs = async () => {
+    try {
+      const res = await jobService.getSavedJobs();
+      if (res?.data) {
+        setSavedJobsCount(res.data.length);
+      }
+    } catch (err) {
+      console.error("Failed to refresh saved jobs count:", err);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -43,11 +60,12 @@ export const LearnerCandidateDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [profileRes, enrolledRes, appsRes, interviewRes] = await Promise.allSettled([
+        const [profileRes, enrolledRes, appsRes, interviewRes, savedRes] = await Promise.allSettled([
           learnerService.getProfile(),
           courseService.getEnrolledCourses(),
           applicationService.getMyApplications({ size: 5 }),
           interviewService.getMyInterviews({ size: 1 }),
+          jobService.getSavedJobs(),
         ]);
 
         if (!isMounted) return;
@@ -69,6 +87,10 @@ export const LearnerCandidateDashboard = () => {
             items: appsRes.value.data.items || [],
             total: appsRes.value.data.total || 0,
           });
+        }
+
+        if (savedRes.status === "fulfilled" && savedRes.value?.data) {
+          setSavedJobsCount(savedRes.value.data.length);
         }
       } catch (err) {
         console.error("Failed to load candidate dashboard data:", err);
@@ -192,12 +214,22 @@ export const LearnerCandidateDashboard = () => {
             </div>
           </div>
 
-          <Link
-            to={ROUTES.LEARNER_PROFILE || "/learner/profile"}
-            className="flex-shrink-0 px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
-          >
-            Edit Profile
-          </Link>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsSavedDrawerOpen(true)}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-blue-200 bg-blue-50/90 hover:bg-blue-100 text-blue-700 transition-colors shadow-2xs flex items-center space-x-1.5"
+            >
+              <Bookmark className="w-3.5 h-3.5 fill-blue-600 text-blue-600" />
+              <span>Saved ({savedJobsCount})</span>
+            </button>
+            <Link
+              to={ROUTES.LEARNER_PROFILE || "/learner/profile"}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+            >
+              Edit Profile
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -386,6 +418,14 @@ export const LearnerCandidateDashboard = () => {
         </div>
       </div>
 
+      {/* Recommended for You Smart Matching Carousel (SKL-6) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs">
+        <RecommendedJobsCarousel
+          onSavedJobsChanged={refreshSavedJobs}
+          onOpenSavedDrawer={() => setIsSavedDrawerOpen(true)}
+        />
+      </div>
+
       {/* Third Row: Mock Test Result & Application Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: DSA Mock Test Passed */}
@@ -492,6 +532,13 @@ export const LearnerCandidateDashboard = () => {
           <span>Edit Profile</span>
         </Link>
       </div>
+
+      {/* Saved Jobs Quick-Access Slide-Out Drawer (SKL-6) */}
+      <SavedJobsDrawer
+        isOpen={isSavedDrawerOpen}
+        onClose={() => setIsSavedDrawerOpen(false)}
+        onSavedCountChange={setSavedJobsCount}
+      />
     </div>
   );
 };

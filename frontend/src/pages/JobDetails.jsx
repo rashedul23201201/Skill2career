@@ -26,6 +26,7 @@ import {
   UploadCloud,
   FileCheck,
   AlertCircle,
+  Bookmark,
 } from "lucide-react";
 
 export const JobDetails = () => {
@@ -52,6 +53,8 @@ export const JobDetails = () => {
   const [applySubmitting, setApplySubmitting] = useState(false);
   const [applySuccess, setApplySuccess] = useState(false);
   const [applyError, setApplyError] = useState(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
 
   // Tabs: "overview" | "screening"
   const [activeTab, setActiveTab] = useState(
@@ -156,6 +159,44 @@ export const JobDetails = () => {
         .catch(() => {});
     }
   }, [user]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (user && id && (user.role === USER_ROLES.LEARNER || user.role === USER_ROLES.ADMIN)) {
+      jobService
+        .getSavedJobs()
+        .then((res) => {
+          if (isMounted && res?.data) {
+            setIsSaved(res.data.some((item) => String(item.job_id) === String(id)));
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [id, user]);
+
+  const handleToggleSave = async () => {
+    if (!user) {
+      navigate(ROUTES.LOGIN, { state: { from: location.pathname } });
+      return;
+    }
+    const prev = isSaved;
+    setIsSaved(!prev);
+    setSaveLoading(true);
+    try {
+      const res = await jobService.saveJob(id);
+      if (res?.data) {
+        setIsSaved(res.data.is_saved);
+      }
+    } catch (err) {
+      console.error("Failed to toggle bookmark:", err);
+      setIsSaved(prev);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (canManage) {
@@ -491,6 +532,22 @@ export const JobDetails = () => {
               className="w-full py-2.5 rounded-xl bg-navy-950 hover:bg-navy-900 text-white font-semibold text-xs shadow-sm transition-all text-center"
             >
               Apply to Vacancy
+            </button>
+          )}
+
+          {!canManage && (
+            <button
+              type="button"
+              onClick={handleToggleSave}
+              disabled={saveLoading}
+              className={`w-full py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center space-x-2 ${
+                isSaved
+                  ? "bg-blue-50 border-blue-200 text-blue-700 shadow-2xs"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+              }`}
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? "fill-blue-600 text-blue-600" : ""}`} />
+              <span>{isSaved ? "Saved in Bookmarks" : "Save Job (1-Click Bookmark)"}</span>
             </button>
           )}
         </div>

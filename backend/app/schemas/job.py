@@ -160,3 +160,40 @@ class JobTaxonomiesResponse(BaseModel):
     categories: List[str]
     locations: List[str]
     salary_presets: List[JobTaxonomyPreset]
+
+
+class SavedJobItemResponse(BaseModel):
+    """Representation of a saved vacancy with real-time status reflection (SKL-6)."""
+    id: int
+    saved_job_id: int
+    job_id: int
+    learner_id: int
+    saved_at: datetime
+    computed_status: str  # "Active", "Closed", "Expired"
+    is_active: bool
+    is_expired: bool
+    is_closed: bool
+    job: JobPostingResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SavedJobToggleResponse(BaseModel):
+    """Response payload for 1-click vacancy bookmarking or unsaving (SKL-6)."""
+    job_id: int
+    is_saved: bool
+    saved_job_id: Optional[int] = None
+    message: str
+    computed_status: Optional[str] = None
+
+
+class RecommendedJobResponse(JobPostingResponse):
+    """Personalized vacancy recommendation with match percentage and skill tags (SKL-6)."""
+    match_score: int = 0
+    matched_skills: List[str] = []
+    missing_skills: List[str] = []
+    is_saved: bool = False
+    has_applied: bool = False
+    recommendation_reason: Optional[str] = None
+    job: Optional[JobPostingResponse] = None
+

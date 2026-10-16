@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, UploadFile, File, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, UploadFile, File, Query, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -6,19 +7,21 @@ from app.database.session import get_db
 from app.dependencies.auth import require_role
 from app.models.user import User, UserRole
 from app.schemas.auth import ApiResponse
-from typing import List
 from app.schemas.learner import (
     LearnerProfileUpdateRequest,
     LearnerProfileResponse,
     ResumeUploadResponse,
 )
 from app.schemas.mock_test import TestResultResponse
+from app.schemas.job import SavedJobItemResponse, RecommendedJobResponse
 from app.services.learner_service import LearnerService
 from app.services.mock_test_service import MockTestService
+from app.services.saved_job_service import SavedJobService
 
 router = APIRouter(prefix="/learners", tags=["Learner Profile Management"])
 learner_service = LearnerService()
 mock_test_service = MockTestService()
+saved_job_service = SavedJobService()
 
 
 @router.get(
@@ -144,4 +147,71 @@ def get_learner_test_history(
         message="Learner test history retrieved successfully",
         data=history,
     )
+
+
+@router.get(
+    "/saved-jobs",
+    response_model=ApiResponse[List[SavedJobItemResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get authenticated learner's saved vacancies collection (SKL-6)",
+)
+def get_saved_jobs(
+    status_filter: Optional[str] = Query(default=None, alias="status", description="Filter by status: active, closed, expired, or all"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[List[SavedJobItemResponse]]:
+    """Retrieve all bookmarked vacancies with real-time status reflection (Active, Closed, Expired)."""
+    saved_jobs = saved_job_service.get_saved_jobs(
+        db=db, current_user=current_user, status_filter=status_filter
+    )
+    return ApiResponse[List[SavedJobItemResponse]](
+        success=True,
+        message="Saved vacancies retrieved successfully",
+        data=saved_jobs,
+    )
+
+
+@router.delete(
+    "/saved-jobs/{id}",
+    response_model=ApiResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Remove a saved vacancy by saved_job_id or job_id (SKL-6)",
+)
+def delete_saved_job(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[dict]:
+    """Remove a bookmarked vacancy from the learner's saved collection."""
+    result = saved_job_service.delete_saved_job(
+        db=db, current_user=current_user, target_id=id
+    )
+    return ApiResponse[dict](
+        success=True,
+        message=result.get("message", "Saved job removed successfully"),
+        data=result,
+    )
+
+
+@router.get(
+    "/recommended-jobs",
+    response_model=ApiResponse[List[RecommendedJobResponse]],
+    status_code=status.HTTP_200_OK,
+    summary="Get profile-based smart vacancy recommendations (SKL-6)",
+)
+def get_recommended_jobs(
+    limit: int = Query(default=10, ge=1, le=50, description="Max recommendations to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[List[RecommendedJobResponse]]:
+    """Smart recommendation engine matching learner profile skills & target role against active vacancies."""
+    recommendations = saved_job_service.get_recommended_jobs(
+        db=db, current_user=current_user, limit=limit
+    )
+    return ApiResponse[List[RecommendedJobResponse]](
+        success=True,
+        message="Personalized job recommendations retrieved successfully",
+        data=recommendations,
+    )
+
 
