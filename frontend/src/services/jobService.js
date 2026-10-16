@@ -70,6 +70,39 @@ export const jobService = {
     });
     return response.data;
   },
+
+  /**
+   * 1-click save, unsave, or toggle vacancy bookmark for authenticated learner (SKL-6).
+   */
+  async saveJob(jobId, action = null) {
+    const params = action ? { action } : {};
+    const response = await api.post(`/jobs/${jobId}/save`, null, { params });
+    return response.data;
+  },
+
+  /**
+   * Remove a vacancy from the authenticated learner's saved list (SKL-6).
+   */
+  async unsaveJob(jobId) {
+    const response = await api.delete(`/jobs/${jobId}/save`);
+    return response.data;
+  },
+
+  /**
+   * Fetch authenticated learner's saved jobs collection (SKL-6).
+   */
+  async getSavedJobs(params = {}) {
+    const response = await api.get("/learners/saved-jobs", { params });
+    return response.data;
+  },
+
+  /**
+   * Fetch profile-based smart vacancy recommendations for authenticated learner (SKL-6).
+   */
+  async getRecommendedJobs(params = {}) {
+    const response = await api.get("/learners/recommended-jobs", { params });
+    return response.data;
+  },
 };
 
 export default jobService;

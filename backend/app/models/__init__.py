@@ -3,9 +3,8 @@
 from app.models.user import User, UserRole
 from app.models.token import RefreshToken, PasswordResetToken, EmailVerificationToken
 from app.models.profile import LearnerProfile, InstructorProfile, CompanyProfile
-from app.models.audit_log import AuditLog
 from app.models.course import Course, CourseModule, Lesson, CourseLevel, CourseStatus
-from app.models.job import JobPosting, JobPostingType, JobWorkMode, JobStatus, JobExperienceLevel
+from app.models.job import JobPosting, JobPostingType, JobWorkMode, JobStatus, JobExperienceLevel, SavedJob
 from app.models.mock_test import MockTest, TestQuestion, MockTestStatus, TestAttempt, TestAttemptStatus
 from app.models.forum import ForumCategory, ForumPost, ForumComment, ForumLike, ForumReport
 from app.models.screening import ScreeningQuestion, CandidateEvaluation, QuestionType, DealBreakerRule, CandidateStatus
@@ -57,6 +56,7 @@ __all__ = [
     "JobWorkMode",
     "JobStatus",
     "JobExperienceLevel",
+    "SavedJob",
     "MockTest",
     "TestQuestion",
     "MockTestStatus",

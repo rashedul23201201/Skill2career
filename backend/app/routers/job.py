@@ -13,11 +13,14 @@ from app.schemas.job import (
     JobPostingResponse,
     PaginatedJobPostingResponse,
     JobTaxonomiesResponse,
+    SavedJobToggleResponse,
 )
 from app.services.job_service import JobService
+from app.services.saved_job_service import SavedJobService
 
 router = APIRouter(prefix="/jobs", tags=["Job & Internship Postings (Recruitment)"])
 job_service = JobService()
+saved_job_service = SavedJobService()
 
 
 @router.post(
@@ -235,3 +238,49 @@ def update_job_status(
         message=f"Job posting status updated to {request_data.status.value}",
         data=updated,
     )
+
+
+@router.post(
+    "/{job_id}/save",
+    response_model=ApiResponse[SavedJobToggleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="1-click save, unsave, or toggle vacancy bookmark (SKL-6)",
+)
+def save_job(
+    job_id: int,
+    action: Optional[str] = Query(default=None, description="Explicit action: 'save', 'unsave', or None for toggle"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[SavedJobToggleResponse]:
+    """1-click save / bookmark or unsave a job posting for the authenticated learner (SKL-6)."""
+    result = saved_job_service.toggle_save_job(
+        db=db, job_id=job_id, current_user=current_user, action=action
+    )
+    return ApiResponse[SavedJobToggleResponse](
+        success=True,
+        message=result.message,
+        data=result,
+    )
+
+
+@router.delete(
+    "/{job_id}/save",
+    response_model=ApiResponse[SavedJobToggleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Remove vacancy from saved list (SKL-6)",
+)
+def unsave_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[SavedJobToggleResponse]:
+    """Explicitly remove a vacancy from the authenticated learner's saved list (SKL-6)."""
+    result = saved_job_service.toggle_save_job(
+        db=db, job_id=job_id, current_user=current_user, action="unsave"
+    )
+    return ApiResponse[SavedJobToggleResponse](
+        success=True,
+        message=result.message,
+        data=result,
+    )
+

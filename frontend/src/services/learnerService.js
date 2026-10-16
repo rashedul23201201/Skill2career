@@ -54,6 +54,30 @@ export const learnerService = {
     const response = await api.delete("/learners/resume");
     return response.data;
   },
+
+  /**
+   * Fetch saved vacancies collection with real-time status reflection (SKL-6).
+   */
+  async getSavedJobs(params = {}) {
+    const response = await api.get("/learners/saved-jobs", { params });
+    return response.data;
+  },
+
+  /**
+   * Remove a saved vacancy by saved_job_id or job_id (SKL-6).
+   */
+  async deleteSavedJob(id) {
+    const response = await api.delete(`/learners/saved-jobs/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Fetch profile-based smart job recommendations with match percentages (SKL-6).
+   */
+  async getRecommendedJobs(params = {}) {
+    const response = await api.get("/learners/recommended-jobs", { params });
+    return response.data;
+  },
 };
 
 export default learnerService;

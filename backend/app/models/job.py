@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List
-from sqlalchemy import String, DateTime, Integer, ForeignKey, Text, JSON, func, Index
+from sqlalchemy import String, DateTime, Integer, ForeignKey, Text, JSON, func, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
@@ -84,6 +84,39 @@ class JobPosting(Base):
 
     # Relationships
     company = relationship("User", foreign_keys=[company_id], backref="job_postings")
+    saved_by_learners = relationship("SavedJob", back_populates="job", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<JobPosting id={self.id} title='{self.title}' status='{self.status}'>"
+
+
+class SavedJob(Base):
+    """Saved / bookmarked vacancies collection for learners (SKL-6)."""
+    __tablename__ = "saved_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    learner_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    job_id: Mapped[int] = mapped_column(
+        ForeignKey("job_postings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    saved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("learner_id", "job_id", name="uq_saved_jobs_learner_job"),
+        Index("ix_saved_jobs_learner_saved_at", "learner_id", "saved_at"),
+    )
+
+    # Relationships
+    learner = relationship("User", foreign_keys=[learner_id], backref="saved_jobs")
+    job = relationship("JobPosting", foreign_keys=[job_id], back_populates="saved_by_learners")
+
+    def __repr__(self) -> str:
+        return f"<SavedJob id={self.id} learner_id={self.learner_id} job_id={self.job_id}>"

@@ -65,9 +65,10 @@ export const Jobs = () => {
     }
   });
 
-  const toggleBookmark = (jobId) => {
+  const toggleBookmark = async (jobId) => {
+    const isCurrentlySaved = bookmarkedIds.includes(jobId);
     setBookmarkedIds((prev) => {
-      const next = prev.includes(jobId)
+      const next = isCurrentlySaved
         ? prev.filter((id) => id !== jobId)
         : [...prev, jobId];
       try {
@@ -77,6 +78,14 @@ export const Jobs = () => {
       }
       return next;
     });
+
+    if (user && (user.role === USER_ROLES.LEARNER || user.role === USER_ROLES.ADMIN)) {
+      try {
+        await jobService.saveJob(jobId);
+      } catch (err) {
+        console.error("Failed to sync bookmark with backend:", err);
+      }
+    }
   };
 
   // Recruiter tab switch ("all" or "my_jobs")
@@ -106,6 +115,32 @@ export const Jobs = () => {
       isMounted = false;
     };
   }, []);
+
+  // Sync saved jobs from backend for logged in learners (SKL-6)
+  useEffect(() => {
+    let isMounted = true;
+    if (user && (user.role === USER_ROLES.LEARNER || user.role === USER_ROLES.ADMIN)) {
+      jobService
+        .getSavedJobs()
+        .then((res) => {
+          if (isMounted && res?.data) {
+            const ids = res.data.map((item) => item.job_id);
+            setBookmarkedIds(ids);
+            try {
+              localStorage.setItem("s2c_bookmarked_jobs", JSON.stringify(ids));
+            } catch {
+              // ignore
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not load backend saved jobs:", err);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   // 300ms Debounce timer for search input (SKL-5 AC-1)
   useEffect(() => {
