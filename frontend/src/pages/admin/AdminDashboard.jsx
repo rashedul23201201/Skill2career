@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import adminService from "../../services/adminService";
 import instructorService from "../../services/instructorService";
 import ContentModerationTab from "../../components/admin/ContentModerationTab";
+import TransactionAuditTab from "../../components/admin/TransactionAuditTab";
 import { ROUTES } from "../../constants";
 import {
   Users,
@@ -27,7 +28,12 @@ import {
 
 export const AdminDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") === "moderation" ? "moderation" : "overview";
+  const initialTab =
+    searchParams.get("tab") === "moderation"
+      ? "moderation"
+      : searchParams.get("tab") === "transactions"
+      ? "transactions"
+      : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [stats, setStats] = useState(null);
   const [moderationStats, setModerationStats] = useState(null);
@@ -222,10 +228,28 @@ export const AdminDashboard = () => {
             </span>
           )}
         </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("transactions");
+            setSearchParams({ tab: "transactions" });
+          }}
+          className={`pb-3.5 px-1 text-sm font-bold flex items-center space-x-2 border-b-2 transition-all ${
+            activeTab === "transactions"
+              ? "border-emerald-600 text-emerald-600"
+              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-emerald-600" />
+          <span>Transaction Audit (SKL-21)</span>
+        </button>
       </div>
 
       {activeTab === "moderation" ? (
         <ContentModerationTab />
+      ) : activeTab === "transactions" ? (
+        <TransactionAuditTab />
       ) : (
         <>
           {/* 4 Metric Counters (Admin Dashboard.png) */}

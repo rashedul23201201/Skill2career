@@ -62,6 +62,8 @@ class PaymentTransactionResponse(BaseModel):
     user_id: int
     subscription_id: Optional[int] = None
     plan_name: Optional[str] = None
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
     amount: float
     currency: str = "BDT"
     gateway: str
