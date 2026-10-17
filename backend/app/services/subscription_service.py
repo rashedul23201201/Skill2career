@@ -86,12 +86,20 @@ class SubscriptionService:
         elif txn.raw_response and isinstance(txn.raw_response, dict):
             plan_name = txn.raw_response.get("plan_name") or txn.raw_response.get("plan_code")
 
+        user_email = None
+        user_name = None
+        if txn.user:
+            user_email = txn.user.email
+            user_name = f"{txn.user.first_name} {txn.user.last_name}".strip()
+
         return PaymentTransactionResponse(
             id=txn.id,
             transaction_ref=txn.transaction_ref,
             user_id=txn.user_id,
             subscription_id=txn.subscription_id,
             plan_name=plan_name,
+            user_email=user_email,
+            user_name=user_name,
             amount=float(txn.amount),
             currency=txn.currency,
             gateway=txn.gateway,
@@ -277,6 +285,10 @@ class SubscriptionService:
         if not txn:
             raise NotFoundException(f"Transaction ref '{request.transaction_ref}' not found")
 
+        # Cross-user authorization guard: only owner or administrator can verify
+        if txn.user_id != current_user.id and current_user.role != UserRole.ADMIN:
+            raise ForbiddenException("You do not have permission to verify this transaction")
+
         # Idempotent check: if already successful and verified, return existing record
         if txn.status == PaymentStatus.SUCCESS.value and txn.verified_at is not None:
             return self._to_transaction_response(txn)
@@ -285,6 +297,10 @@ class SubscriptionService:
         txn.status = request.status or PaymentStatus.SUCCESS.value
         txn.verified_at = now
         txn.verified_by = current_user.id
+
+        if txn.status == PaymentStatus.SUCCESS.value and txn.subscription:
+            txn.subscription.status = SubscriptionStatus.ACTIVE.value
+
         db.commit()
         db.refresh(txn)
 

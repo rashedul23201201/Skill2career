@@ -217,8 +217,8 @@ export const Subscription = () => {
             {/* Top Card: Current Plan Banner */}
             <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
               <div className="flex items-start sm:items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                  <ShieldCheck className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600 shrink-0">
+                  <Check className="w-6 h-6 stroke-[3]" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2.5 flex-wrap">
@@ -288,12 +288,6 @@ export const Subscription = () => {
                           : "bg-white border border-slate-200/90 shadow-2xs hover:border-slate-300"
                       }`}
                     >
-                      {/* Popular tag on Monthly card if not already current */}
-                      {isMonthly && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
-                          Most Popular
-                        </div>
-                      )}
 
                       <div className="space-y-4">
                         <div>
@@ -396,7 +390,12 @@ export const Subscription = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {paginatedTransactions.map((txn) => (
-                        <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr
+                          key={txn.id}
+                          onClick={() => handleViewInvoice(txn.id)}
+                          title="Click to view tax invoice"
+                          className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                        >
                           <td className="py-4 px-6 text-slate-600 font-medium">
                             {formatDate(txn.created_at)}
                           </td>
@@ -404,18 +403,21 @@ export const Subscription = () => {
                             {txn.plan_name || "Monthly Plan"}
                           </td>
                           <td className="py-4 px-6 font-bold text-navy-950">
-                            ৳{txn.amount.toLocaleString()}
+                            ৳{Number(txn.amount).toLocaleString()}
                           </td>
                           <td className="py-4 px-6">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#E8F8F0] text-[#059669]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
                               {txn.status === "SUCCESS" ? "Paid" : txn.status}
                             </span>
                           </td>
                           <td className="py-4 px-6 text-right">
                             <button
                               type="button"
-                              onClick={() => handleViewInvoice(txn.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewInvoice(txn.id);
+                              }}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold transition-all shadow-2xs"
                             >
                               <Download className="w-3.5 h-3.5 text-slate-500" />
@@ -428,43 +430,44 @@ export const Subscription = () => {
                   </table>
 
                   {/* Pagination Footer */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
-                      <span>
-                        Showing {(currentPage - 1) * pageSize + 1} to{" "}
-                        {Math.min(currentPage * pageSize, transactions.length)} of {transactions.length} debits
-                      </span>
-                      <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white text-xs text-slate-500">
+                    <span className="text-slate-400">
+                      Showing {(currentPage - 1) * pageSize + 1} to{" "}
+                      {Math.min(currentPage * pageSize, transactions.length)} of {transactions.length} debits
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className="text-xs font-medium text-slate-400 hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        &lt;Previous
+                      </button>
+                      {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => i + 1).map((num) => (
                         <button
-                          disabled={currentPage === 1}
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+                          key={num}
+                          type="button"
+                          onClick={() => setCurrentPage(num)}
+                          className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-all ${
+                            currentPage === num
+                              ? "bg-emerald-600 text-white shadow-2xs"
+                              : "text-slate-600 hover:text-navy-950 hover:bg-slate-100"
+                          }`}
                         >
-                          &lt; Previous
+                          {num}
                         </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-                          <button
-                            key={num}
-                            onClick={() => setCurrentPage(num)}
-                            className={`w-7 h-7 rounded-lg font-semibold ${
-                              currentPage === num
-                                ? "bg-emerald-600 text-white"
-                                : "hover:bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        ))}
-                        <button
-                          disabled={currentPage === totalPages}
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Next &gt;
-                        </button>
-                      </div>
+                      ))}
+                      <button
+                        type="button"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className="text-xs font-medium text-slate-700 hover:text-navy-950 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-semibold"
+                      >
+                        Next&gt;
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
