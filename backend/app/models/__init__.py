@@ -32,6 +32,10 @@ from app.models.moderation import (
     ContentType,
     ModerationAction,
 )
+from app.models.chat import (
+    ChatConversation,
+    ChatMessage,
+)
 
 __all__ = [
     "User",
@@ -90,6 +94,8 @@ __all__ = [
     "ModerationStatus",
     "ContentType",
     "ModerationAction",
+    "ChatConversation",
+    "ChatMessage",
 ]
 
 

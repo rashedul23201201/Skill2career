@@ -157,6 +157,15 @@ from app.schemas.moderation import (
     ModerationItemResponse,
     PendingModerationResponse,
 )
+from app.schemas.chat import (
+    ChatParticipantResponse,
+    ChatMessageResponse,
+    ChatConversationResponse,
+    ChatCreateConversationRequest,
+    ChatSendMessageRequest,
+    ChatMarkReadResponse,
+    InstructorDirectoryItemResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -281,4 +290,11 @@ __all__ = [
     "ContentModerationLogResponse",
     "ModerationItemResponse",
     "PendingModerationResponse",
+    "ChatParticipantResponse",
+    "ChatMessageResponse",
+    "ChatConversationResponse",
+    "ChatCreateConversationRequest",
+    "ChatSendMessageRequest",
+    "ChatMarkReadResponse",
+    "InstructorDirectoryItemResponse",
 ]

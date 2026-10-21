@@ -62,5 +62,7 @@ export const ROUTES = {
   RECRUITMENT: "/interviews",
   SUBSCRIPTION: "/subscription",
   BILLING: "/billing",
+  MESSAGES: "/messages",
+  CHAT: "/chat",
 };
 
