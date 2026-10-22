@@ -107,8 +107,15 @@ class UserSubscription(Base):
         return f"<UserSubscription id={self.id} user_id={self.user_id} plan_id={self.plan_id} status='{self.status}'>"
 
 
+class PaymentGatewayType(str, enum.Enum):
+    """Supported payment gateway providers (SKL-20)."""
+    SSLCOMMERZ = "SSLCOMMERZ"
+    GLOBAL_GATEWAY = "GLOBAL_GATEWAY"
+    SIMULATED = "SIMULATED"
+
+
 class PaymentTransaction(Base):
-    """Payment transaction record for ledger and verification (SKL-21)."""
+    """Payment transaction record for ledger and verification (SKL-21 / SKL-20)."""
     __tablename__ = "payment_transactions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
@@ -121,6 +128,12 @@ class PaymentTransaction(Base):
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="BDT", nullable=False)
     gateway: Mapped[str] = mapped_column(String(50), default="SIMULATED", nullable=False)
+    gateway_type: Mapped[str] = mapped_column(String(50), default="SSLCOMMERZ", nullable=False)
+    gateway_session_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    gateway_val_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    bank_tran_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    card_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    error_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default=PaymentStatus.SUCCESS.value, nullable=False, index=True)
 
     raw_response: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

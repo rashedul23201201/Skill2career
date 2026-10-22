@@ -32,6 +32,19 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Payment Gateways (SKL-20)
+    SSLCOMMERZ_STORE_ID: str = "skill2career_sandbox"
+    SSLCOMMERZ_STORE_PASSWORD: str = "skill2career_sandbox@ssl"
+    SSLCOMMERZ_IS_SANDBOX: bool = True
+    SSLCOMMERZ_SESSION_API: str = "https://sandbox.sslcommerz.com/gwprocess/v4/api.php"
+    SSLCOMMERZ_VALIDATION_API: str = "https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php"
+
+    STRIPE_SECRET_KEY: str = "sk_test_mock_stripe_secret_key_skill2career"
+    STRIPE_PUBLISHABLE_KEY: str = "pk_test_mock_stripe_publishable_key_skill2career"
+    STRIPE_WEBHOOK_SECRET: str = "whsec_mock_stripe_webhook_secret_skill2career"
+    GLOBAL_GATEWAY_PROVIDER: str = "STRIPE"
+    PAYMENT_BACKEND_BASE_URL: str = "http://localhost:8000/api/v1"
+
     @property
     def cors_origins(self) -> List[str]:
         """Parse comma-separated allowed origins into a cleaned list."""

@@ -25,6 +25,7 @@ from app.models.subscription import (
     SubscriptionBillingCycle,
     SubscriptionStatus,
     PaymentStatus,
+    PaymentGatewayType,
 )
 from app.models.moderation import (
     ContentModerationLog,
@@ -90,6 +91,7 @@ __all__ = [
     "SubscriptionBillingCycle",
     "SubscriptionStatus",
     "PaymentStatus",
+    "PaymentGatewayType",
     "ContentModerationLog",
     "ModerationStatus",
     "ContentType",
