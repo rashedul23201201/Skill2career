@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import subscriptionService from "../services/subscriptionService";
+import paymentService from "../services/paymentService";
 import { ROUTES } from "../constants";
 import {
   ShieldCheck,
@@ -20,10 +21,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 
 export const Subscription = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
@@ -33,10 +37,15 @@ export const Subscription = () => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  // Modal states
+  // Modal & Gateway States (SKL-20)
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState(null);
+  const [gatewayType, setGatewayType] = useState("SSLCOMMERZ"); // "SSLCOMMERZ" or "GLOBAL_GATEWAY"
   const [paymentMethod, setPaymentMethod] = useState("bKash Auto-Debit");
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+
+  // Active Gateway Session / Simulation Modal (SKL-20)
+  const [activeGatewaySession, setActiveGatewaySession] = useState(null);
+  const [isSimulatingAction, setIsSimulatingAction] = useState(false);
 
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -74,31 +83,168 @@ export const Subscription = () => {
 
   useEffect(() => {
     loadSubscriptionData();
+
+    // Check for gateway return query parameters
+    const paymentStatus = searchParams.get("payment");
+    const tranId = searchParams.get("tran_id");
+    if (paymentStatus === "success") {
+      setSuccessMsg(
+        `Payment verified successfully${tranId ? ` (${tranId})` : ""}! Your subscription tier is now active.`
+      );
+      // Clean query parameters from URL
+      searchParams.delete("payment");
+      searchParams.delete("tran_id");
+      setSearchParams(searchParams, { replace: true });
+    } else if (paymentStatus === "failed") {
+      setError(
+        `Payment failed or was declined by issuing bank${tranId ? ` (${tranId})` : ""}. Your subscription was not activated.`
+      );
+      searchParams.delete("payment");
+      searchParams.delete("tran_id");
+      setSearchParams(searchParams, { replace: true });
+    } else if (paymentStatus === "cancelled") {
+      setError(
+        `Payment was cancelled${tranId ? ` (${tranId})` : ""}. Your subscription was not activated.`
+      );
+      searchParams.delete("payment");
+      searchParams.delete("tran_id");
+      setSearchParams(searchParams, { replace: true });
+    }
   }, []);
 
-  const handleSelectPlan = async () => {
+  // Initiate payment with SSLCommerz or Global Gateway (SKL-20 AC-1, AC-2, AC-3)
+  const handleInitiatePayment = async () => {
     if (!selectedPlanForCheckout) return;
 
     try {
       setIsProcessingCheckout(true);
       setError(null);
-      const res = await subscriptionService.selectPlan({
+
+      const res = await paymentService.initiatePayment({
         plan_id: selectedPlanForCheckout.id,
         plan_code: selectedPlanForCheckout.code,
-        payment_gateway: "SIMULATED",
+        gateway_type: gatewayType,
         payment_method: paymentMethod,
       });
 
-      if (res?.success) {
-        setSuccessMsg(`Successfully activated ${selectedPlanForCheckout.name} plan!`);
+      if (res?.success && res?.data) {
+        // Open the gateway action / sandbox checkout modal
+        setActiveGatewaySession({
+          ...res.data,
+          plan: selectedPlanForCheckout,
+          method: paymentMethod,
+        });
         setSelectedPlanForCheckout(null);
-        await loadSubscriptionData();
-        setTimeout(() => setSuccessMsg(null), 5000);
       }
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to update subscription.");
+      console.error("Payment initiation failed:", err);
+      setError(err?.response?.data?.message || "Failed to initiate payment session with gateway.");
     } finally {
       setIsProcessingCheckout(false);
+    }
+  };
+
+  // Complete sandbox payment simulation (SKL-20 AC-4)
+  const handleCompleteSandboxPayment = async () => {
+    if (!activeGatewaySession) return;
+
+    try {
+      setIsSimulatingAction(true);
+      setError(null);
+
+      if (activeGatewaySession.gateway_type === "SSLCOMMERZ") {
+        const res = await paymentService.verifySSLCommerzSuccess({
+          tran_id: activeGatewaySession.transaction_ref,
+          val_id: `SSLC_VAL_${Date.now()}`,
+          amount: activeGatewaySession.amount,
+          currency: activeGatewaySession.currency || "BDT",
+          card_type: activeGatewaySession.method || "BKASH-BKASH",
+          bank_tran_id: `BANK_${Date.now()}`,
+          status: "VALID",
+        });
+
+        if (res?.success) {
+          setSuccessMsg(
+            `Payment successfully verified via SSLCommerz! Your ${activeGatewaySession.plan_name} plan is now active.`
+          );
+          setActiveGatewaySession(null);
+          await loadSubscriptionData();
+          setTimeout(() => setSuccessMsg(null), 6000);
+        }
+      } else {
+        // Global Gateway (Stripe) webhook simulation
+        const res = await paymentService.triggerGlobalWebhook({
+          type: "checkout.session.completed",
+          data: {
+            object: {
+              id: activeGatewaySession.session_id,
+              client_reference_id: activeGatewaySession.transaction_ref,
+              amount_total: Math.round(activeGatewaySession.amount * 100),
+              currency: "bdt",
+              payment_status: "paid",
+            },
+          },
+        });
+
+        if (res?.success) {
+          setSuccessMsg(
+            `Payment successfully verified via Global Gateway! Your ${activeGatewaySession.plan_name} plan is now active.`
+          );
+          setActiveGatewaySession(null);
+          await loadSubscriptionData();
+          setTimeout(() => setSuccessMsg(null), 6000);
+        }
+      }
+    } catch (err) {
+      console.error("Payment verification failed:", err);
+      setError(err?.response?.data?.message || "Failed to complete payment verification.");
+    } finally {
+      setIsSimulatingAction(false);
+    }
+  };
+
+  // Simulate payment cancellation (SKL-20 AC-5: subscription not activated)
+  const handleSimulateCancelPayment = async () => {
+    if (!activeGatewaySession) return;
+
+    try {
+      setIsSimulatingAction(true);
+      setError(null);
+
+      await paymentService.reportSSLCommerzCancel({
+        tran_id: activeGatewaySession.transaction_ref,
+      });
+
+      setError("Payment was cancelled by user. Your subscription was not activated.");
+      setActiveGatewaySession(null);
+      await loadSubscriptionData();
+    } catch (err) {
+      console.error("Cancel reporting error:", err);
+    } finally {
+      setIsSimulatingAction(false);
+    }
+  };
+
+  // Simulate payment failure (SKL-20 AC-5: subscription not activated)
+  const handleSimulateFailPayment = async () => {
+    if (!activeGatewaySession) return;
+
+    try {
+      setIsSimulatingAction(true);
+      setError(null);
+
+      await paymentService.reportSSLCommerzFail({
+        tran_id: activeGatewaySession.transaction_ref,
+        error: "Insufficient funds or card declined by issuing bank",
+      });
+
+      setError("Payment failed: Card was declined by bank. Your subscription was not activated.");
+      setActiveGatewaySession(null);
+      await loadSubscriptionData();
+    } catch (err) {
+      console.error("Fail reporting error:", err);
+    } finally {
+      setIsSimulatingAction(false);
     }
   };
 
@@ -169,7 +315,7 @@ export const Subscription = () => {
           </div>
           <span>Account &amp; Billing</span>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-bold">Subscription</span>
+          <span className="text-slate-900 font-bold">Subscription &amp; Payment</span>
         </div>
 
         {/* Page Header */}
@@ -178,7 +324,7 @@ export const Subscription = () => {
             Subscription &amp; Payment
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage your subscription tier, billing cycles, and access payment receipts.
+            Manage your subscription tier, local and global payment gateways, and access verified tax receipts.
           </p>
         </div>
 
@@ -242,7 +388,7 @@ export const Subscription = () => {
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>
                       {currentSub?.expires_at
-                        ? `Next billing date: ${formatDate(currentSub.expires_at)} · Via bKash Auto-Debit`
+                        ? `Next billing date: ${formatDate(currentSub.expires_at)} · SSLCommerz / Global Gateway`
                         : "Free Tier · Lifetime standard access"}
                     </span>
                   </div>
@@ -269,7 +415,7 @@ export const Subscription = () => {
                   Available Plans
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500">
-                  Switch tier at any time. Changes take effect at the start of your next billing cycle.
+                  Switch tier at any time. Secure transactions powered by SSLCommerz and Global Gateway.
                 </p>
               </div>
 
@@ -288,7 +434,6 @@ export const Subscription = () => {
                           : "bg-white border border-slate-200/90 shadow-2xs hover:border-slate-300"
                       }`}
                     >
-
                       <div className="space-y-4">
                         <div>
                           <h3 className="text-base font-bold text-navy-950 font-heading">
@@ -338,7 +483,11 @@ export const Subscription = () => {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => setSelectedPlanForCheckout(plan)}
+                            onClick={() => {
+                              setSelectedPlanForCheckout(plan);
+                              setGatewayType("SSLCOMMERZ");
+                              setPaymentMethod("bKash Auto-Debit");
+                            }}
                             className={`w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                               isMonthly
                                 ? "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
@@ -359,10 +508,10 @@ export const Subscription = () => {
             <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
               <div className="p-6 border-b border-slate-100">
                 <h2 className="text-base font-bold text-navy-950 font-heading">
-                  Payment History
+                  Payment History &amp; Gateway Audit
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Download official tax invoices and review your previous subscription debits.
+                  Verified ledger records for SSLCommerz (Local BDT) and Global Gateway transactions.
                 </p>
               </div>
 
@@ -382,7 +531,8 @@ export const Subscription = () => {
                     <thead>
                       <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         <th className="py-3 px-6">Date</th>
-                        <th className="py-3 px-6">Plan</th>
+                        <th className="py-3 px-6">Plan &amp; Ref</th>
+                        <th className="py-3 px-6">Gateway &amp; Channel</th>
                         <th className="py-3 px-6">Amount</th>
                         <th className="py-3 px-6">Status</th>
                         <th className="py-3 px-6 text-right">Invoice</th>
@@ -399,17 +549,49 @@ export const Subscription = () => {
                           <td className="py-4 px-6 text-slate-600 font-medium">
                             {formatDate(txn.created_at)}
                           </td>
-                          <td className="py-4 px-6 font-semibold text-navy-950">
-                            {txn.plan_name || "Monthly Plan"}
+                          <td className="py-4 px-6">
+                            <span className="font-semibold text-navy-950 block">
+                              {txn.plan_name || "Pro Subscription"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {txn.transaction_ref}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
+                              {txn.gateway_type === "GLOBAL_GATEWAY" || txn.gateway === "STRIPE" ? (
+                                <Globe className="w-3.5 h-3.5 text-blue-500" />
+                              ) : (
+                                <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                              <span>{txn.gateway_type || txn.gateway}</span>
+                            </span>
+                            {txn.card_type && (
+                              <span className="block text-[10px] text-slate-400">
+                                {txn.card_type}
+                              </span>
+                            )}
                           </td>
                           <td className="py-4 px-6 font-bold text-navy-950">
                             ৳{Number(txn.amount).toLocaleString()}
                           </td>
                           <td className="py-4 px-6">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#E8F8F0] text-[#059669]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
-                              {txn.status === "SUCCESS" ? "Paid" : txn.status}
-                            </span>
+                            {txn.status === "SUCCESS" ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F8F0] text-[#059669]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
+                                Paid
+                              </span>
+                            ) : txn.status === "PENDING" ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Pending
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                {txn.status}
+                              </span>
+                            )}
                           </td>
                           <td className="py-4 px-6 text-right">
                             <button
@@ -474,18 +656,23 @@ export const Subscription = () => {
           </>
         )}
 
-        {/* Modal: Checkout / Select Plan Confirmation */}
+        {/* Modal: Gateway Selection & Initiation (SKL-20 AC-1, AC-2, AC-3) */}
         {selectedPlanForCheckout && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 sm:p-7 space-y-5 border border-slate-100">
+            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 sm:p-7 space-y-5 border border-slate-100 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     <Sparkles className="w-5 h-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-navy-950 font-heading">
-                    Confirm Tier Selection
-                  </h3>
+                  <div>
+                    <h3 className="text-lg font-bold text-navy-950 font-heading">
+                      Select Payment Gateway
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Choose between Local Bangladesh Payment or Global Payment
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedPlanForCheckout(null)}
@@ -495,14 +682,14 @@ export const Subscription = () => {
                 </button>
               </div>
 
-              {/* Summary Card */}
+              {/* Order Summary */}
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500 font-medium">Selected Tier:</span>
                   <span className="font-bold text-navy-950">{selectedPlanForCheckout.name} Plan</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500 font-medium">Billing Cycle:</span>
+                  <span className="text-slate-500 font-medium">Billing Cadence:</span>
                   <span className="font-semibold text-slate-800 capitalize">
                     {selectedPlanForCheckout.billing_cycle}
                   </span>
@@ -515,31 +702,92 @@ export const Subscription = () => {
                 </div>
               </div>
 
-              {/* Payment Method Selector if Paid */}
-              {selectedPlanForCheckout.price > 0 && (
+              {/* Gateway Selection Tabs (SKL-20 AC-2 & AC-3) */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  1. Choose Payment Provider
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Local Gateway Option: SSLCommerz */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGatewayType("SSLCOMMERZ");
+                      setPaymentMethod("bKash Auto-Debit");
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative ${
+                      gatewayType === "SSLCOMMERZ"
+                        ? "border-emerald-500 bg-emerald-50/30 text-navy-950 ring-2 ring-emerald-500/20"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-extrabold text-emerald-700 uppercase tracking-wider">
+                        Local Payment
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        BDT ৳
+                      </span>
+                    </div>
+                    <p className="font-bold text-sm text-navy-950">SSLCommerz Gateway</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      bKash, Nagad, Rocket, Upay &amp; Local Bangladeshi Cards
+                    </p>
+                  </button>
+
+                  {/* Global Gateway Option: Stripe */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGatewayType("GLOBAL_GATEWAY");
+                      setPaymentMethod("International Credit/Debit Card");
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative ${
+                      gatewayType === "GLOBAL_GATEWAY"
+                        ? "border-blue-500 bg-blue-50/30 text-navy-950 ring-2 ring-blue-500/20"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-extrabold text-blue-700 uppercase tracking-wider">
+                        Global Payment
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
+                        Global / USD
+                      </span>
+                    </div>
+                    <p className="font-bold text-sm text-navy-950">Global Gateway (Stripe)</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Visa, MasterCard, American Express, Apple Pay
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-channel Selection for Local Gateway */}
+              {gatewayType === "SSLCOMMERZ" && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Select Payment Method
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    2. Preferred Local Channel
                   </label>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { id: "bKash Auto-Debit", label: "bKash Auto-Debit", color: "text-pink-600" },
-                      { id: "Nagad Gateway", label: "Nagad", color: "text-orange-600" },
+                      { id: "bKash Auto-Debit", label: "bKash", color: "text-pink-600" },
+                      { id: "Nagad Mobile Banking", label: "Nagad", color: "text-orange-600" },
+                      { id: "Rocket Mobile Banking", label: "Rocket", color: "text-purple-600" },
+                      { id: "Local Cards (Visa/Master)", label: "Cards", color: "text-blue-600" },
                     ].map((m) => (
                       <button
                         key={m.id}
                         type="button"
                         onClick={() => setPaymentMethod(m.id)}
-                        className={`p-3 rounded-xl border text-left text-xs font-semibold transition-all ${
+                        className={`p-2.5 rounded-xl border text-center text-xs font-semibold transition-all ${
                           paymentMethod === m.id
-                            ? "border-emerald-500 bg-emerald-50/40 text-navy-950 ring-2 ring-emerald-500/20"
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-500"
                             : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
                         }`}
                       >
-                        <span className={`block text-[10px] uppercase font-extrabold ${m.color}`}>
-                          Mobile Banking
-                        </span>
-                        <span>{m.label}</span>
+                        <span className={`block font-bold ${m.color}`}>{m.label}</span>
                       </button>
                     ))}
                   </div>
@@ -547,7 +795,7 @@ export const Subscription = () => {
               )}
 
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                By confirming, your account will be activated immediately with all Pro entitlements including full test access and deep performance analytics.
+                Transactions are verified with cryptographic hash signatures and stored idempotently in your personal ledger.
               </p>
 
               <div className="flex items-center gap-3 pt-2">
@@ -561,17 +809,138 @@ export const Subscription = () => {
                 <button
                   type="button"
                   disabled={isProcessingCheckout}
-                  onClick={handleSelectPlan}
+                  onClick={handleInitiatePayment}
                   className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
                 >
                   {isProcessingCheckout ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Activating...</span>
+                      <span>Initiating Gateway...</span>
                     </>
                   ) : (
-                    <span>Confirm &amp; Activate</span>
+                    <span>Proceed to Gateway</span>
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Active Gateway Checkout & Sandbox Verification (SKL-20 AC-4 & AC-5) */}
+        {activeGatewaySession && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 sm:p-7 space-y-5 border border-slate-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-navy-950 font-heading">
+                      Payment Gateway Checkout
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Session Reference: {activeGatewaySession.transaction_ref}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveGatewaySession(null)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Gateway Details Banner */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/80 space-y-2.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Provider:</span>
+                  <span className="font-bold text-navy-950">{activeGatewaySession.gateway_type}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Plan:</span>
+                  <span className="font-semibold text-slate-800">{activeGatewaySession.plan_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Amount to Debit:</span>
+                  <span className="font-black text-emerald-600 text-sm">
+                    ৳{activeGatewaySession.amount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Session ID:</span>
+                  <span className="font-mono text-slate-700">{activeGatewaySession.session_id}</span>
+                </div>
+              </div>
+
+              {/* Direct Redirect Action */}
+              <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-900">Live Gateway Redirect URL</span>
+                  <a
+                    href={activeGatewaySession.redirect_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900 underline"
+                  >
+                    <span>Open Gateway Page</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+                <p className="text-[11px] text-blue-700 leading-relaxed">
+                  In live environments, you are redirected to the gateway. In local and CI sandbox testing, you can also trigger test callbacks below.
+                </p>
+              </div>
+
+              {/* Sandbox Simulation Actions */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Sandbox Callback Testing:
+                </p>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    disabled={isSimulatingAction}
+                    onClick={handleCompleteSandboxPayment}
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+                  >
+                    {isSimulatingAction ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4 stroke-[2.5]" />
+                    )}
+                    <span>Simulate Successful Payment (Verify &amp; Activate)</span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={isSimulatingAction}
+                      onClick={handleSimulateFailPayment}
+                      className="py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-colors"
+                    >
+                      Simulate Failure (AC-5)
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSimulatingAction}
+                      onClick={handleSimulateCancelPayment}
+                      className="py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+                    >
+                      Simulate Cancel (AC-5)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveGatewaySession(null)}
+                  className="w-full py-2 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+                >
+                  Close Gateway Modal
                 </button>
               </div>
             </div>

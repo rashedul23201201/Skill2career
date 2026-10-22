@@ -56,7 +56,7 @@ class EntitlementsResponse(BaseModel):
 
 
 class PaymentTransactionResponse(BaseModel):
-    """Schema for transaction ledger record."""
+    """Schema for transaction ledger record (SKL-21 / SKL-20)."""
     id: int
     transaction_ref: str
     user_id: int
@@ -67,6 +67,12 @@ class PaymentTransactionResponse(BaseModel):
     amount: float
     currency: str = "BDT"
     gateway: str
+    gateway_type: Optional[str] = "SSLCOMMERZ"
+    gateway_session_key: Optional[str] = None
+    gateway_val_id: Optional[str] = None
+    bank_tran_id: Optional[str] = None
+    card_type: Optional[str] = None
+    error_reason: Optional[str] = None
     status: str
     raw_response: Optional[dict] = None
     verified_at: Optional[datetime] = None
