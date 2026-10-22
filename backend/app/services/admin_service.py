@@ -12,33 +12,51 @@ from app.models.audit_log import AuditLog
 from app.repositories.user_repository import UserRepository
 from app.repositories.token_repository import TokenRepository
 from app.repositories.audit_log_repository import AuditLogRepository
+from app.repositories.admin_analytics_repository import AdminAnalyticsRepository
 from app.schemas.auth import UserResponse
 from app.schemas.admin import (
     AdminOverviewStats,
     PaginatedUserResponse,
     AuditLogResponse,
+    AdminOverviewAnalyticsResponse,
+    AdminRevenueAnalyticsResponse,
+    AdminRecruitmentSummaryResponse,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class AdminService:
-    """Service implementing administrative operations, RBAC governance, and security audit tracking (SKL-50/SKL-24)."""
+    """Service implementing administrative operations, RBAC governance, and executive analytics (SKL-50/SKL-24/SKL-23)."""
 
     def __init__(
         self,
         user_repo: UserRepository = UserRepository(),
         token_repo: TokenRepository = TokenRepository(),
         audit_repo: AuditLogRepository = AuditLogRepository(),
+        analytics_repo: AdminAnalyticsRepository = AdminAnalyticsRepository(),
     ):
         self.user_repo = user_repo
         self.token_repo = token_repo
         self.audit_repo = audit_repo
+        self.analytics_repo = analytics_repo
 
     def get_overview_stats(self, db: Session) -> AdminOverviewStats:
         """Fetch system-wide aggregated metrics for the Admin Dashboard overview."""
         stats = self.user_repo.get_overview_stats(db)
         return AdminOverviewStats(**stats)
+
+    def get_overview_analytics(self, db: Session) -> AdminOverviewAnalyticsResponse:
+        """Fetch central executive platform overview analytics (SKL-23)."""
+        return self.analytics_repo.get_overview_analytics(db)
+
+    def get_revenue_analytics(self, db: Session) -> AdminRevenueAnalyticsResponse:
+        """Fetch financial transaction telemetry, success rates, and gateway breakdowns (SKL-20/SKL-23)."""
+        return self.analytics_repo.get_revenue_analytics(db)
+
+    def get_recruitment_summary(self, db: Session) -> AdminRecruitmentSummaryResponse:
+        """Fetch ecosystem vacancy volumes, candidate funnels, and interview statuses (SKL-23)."""
+        return self.analytics_repo.get_recruitment_summary(db)
 
     def get_users_paginated(
         self,

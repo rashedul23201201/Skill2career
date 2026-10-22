@@ -12,6 +12,9 @@ from app.schemas.admin import (
     UserStatusUpdateRequest,
     UserRoleUpdateRequest,
     AuditLogResponse,
+    AdminOverviewAnalyticsResponse,
+    AdminRevenueAnalyticsResponse,
+    AdminRecruitmentSummaryResponse,
 )
 from app.schemas.company import (
     PendingCompanyVerificationItem,
@@ -49,6 +52,63 @@ def get_overview_stats(
         success=True,
         message="System overview stats retrieved successfully",
         data=stats
+    )
+
+
+@router.get(
+    "/analytics/overview",
+    response_model=ApiResponse[AdminOverviewAnalyticsResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get central executive overview analytics (SKL-23)",
+)
+def get_analytics_overview(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[AdminOverviewAnalyticsResponse]:
+    """Retrieve platform KPIs, user distribution, recruitment volume, live revenue, and moderation backlogs."""
+    overview = admin_service.get_overview_analytics(db)
+    return ApiResponse[AdminOverviewAnalyticsResponse](
+        success=True,
+        message="Admin overview analytics retrieved successfully",
+        data=overview,
+    )
+
+
+@router.get(
+    "/analytics/revenue",
+    response_model=ApiResponse[AdminRevenueAnalyticsResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get executive subscription and financial revenue analytics (SKL-23)",
+)
+def get_revenue_analytics(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[AdminRevenueAnalyticsResponse]:
+    """Retrieve subscription revenue metrics, transaction success rates, and gateway breakdowns (SKL-20/SKL-23)."""
+    revenue_data = admin_service.get_revenue_analytics(db)
+    return ApiResponse[AdminRevenueAnalyticsResponse](
+        success=True,
+        message="Admin revenue analytics retrieved successfully",
+        data=revenue_data,
+    )
+
+
+@router.get(
+    "/analytics/recruitment-summary",
+    response_model=ApiResponse[AdminRecruitmentSummaryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get ecosystem recruitment pipeline summary (SKL-23)",
+)
+def get_recruitment_summary(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+) -> ApiResponse[AdminRecruitmentSummaryResponse]:
+    """Retrieve cross-company vacancy statistics, application funnels, and interview statuses."""
+    recruitment_data = admin_service.get_recruitment_summary(db)
+    return ApiResponse[AdminRecruitmentSummaryResponse](
+        success=True,
+        message="Admin recruitment summary retrieved successfully",
+        data=recruitment_data,
     )
 
 
