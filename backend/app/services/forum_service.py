@@ -371,6 +371,26 @@ class ForumService:
             verifier=current_user,
             is_verified=is_verified,
         )
+
+        # Event-driven Notification for comment author (SKL-17 AC-1)
+        if is_verified and comment.author_id and comment.author_id != current_user.id:
+            try:
+                from app.models.notification import Notification
+                post_title = comment.post.title if comment.post else "Discussion"
+                notif = Notification(
+                    recipient_id=comment.author_id,
+                    event_type="FORUM_VERIFIED_ANSWER",
+                    title="Answer Verified by Instructor",
+                    message=f"Your answer on discussion post '{post_title}' has been verified by an instructor!",
+                    link_url=f"/forum/{comment.post_id}",
+                    is_read=False,
+                    email_sent=False,
+                )
+                db.add(notif)
+                db.commit()
+            except Exception as notif_err:
+                pass
+
         return self._build_comment_response(updated)
 
     def update_comment(

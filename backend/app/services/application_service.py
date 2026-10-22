@@ -312,6 +312,23 @@ class ApplicationService:
         job.applications_count = (job.applications_count or 0) + 1
         db.commit()
 
+        # Event-driven Notification to Employer (SKL-17 AC-1)
+        try:
+            from app.models.notification import Notification
+            notif = Notification(
+                recipient_id=job.company_id,
+                event_type="APPLICATION_RECEIVED",
+                title=f"New Applicant: {job.title}",
+                message=f"{candidate_name} has applied for '{job.title}'.",
+                link_url="/company/dashboard",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(notif)
+            db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to store notification for job application: %s", notif_err)
+
         reloaded = self.application_repo.get_by_id(db=db, application_id=saved.id)
         return self._format_application_response(reloaded or saved)
 
@@ -439,6 +456,46 @@ class ApplicationService:
                 existing_eval.deal_breaker_failed_reason = "Application withdrawn by candidate"
 
         updated = self.application_repo.update(db=db, application=app)
+
+        # Event-driven Notification & Email Delivery to Candidate (SKL-17 AC-1, AC-4)
+        try:
+            from app.models.notification import Notification
+            from app.services.email_service import email_service
+            job_title = app.job.title if app.job else "Position"
+            status_display = new_status.replace("_", " ").title()
+            title = f"Application Update: {job_title}"
+            body_msg = f"Your application for '{job_title}' has been updated to {status_display}."
+            if request.notes:
+                body_msg += f" Note: {request.notes}"
+
+            notif = Notification(
+                recipient_id=app.learner_id,
+                event_type="APPLICATION_UPDATE",
+                title=title,
+                message=body_msg,
+                link_url="/learner/applications",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(notif)
+            db.commit()
+
+            if app.learner and app.learner.email:
+                delivered = email_service.send_notification_email(
+                    to_email=app.learner.email,
+                    recipient_name=f"{app.learner.first_name} {app.learner.last_name}".strip() or "Candidate",
+                    subject=f"[Skill2Career] {title}",
+                    event_type="APPLICATION_UPDATE",
+                    title=title,
+                    message=body_msg,
+                    link_url="/learner/applications",
+                )
+                if delivered:
+                    notif.email_sent = True
+                    db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to dispatch application status update notification: %s", notif_err)
+
         return self._format_application_response(updated)
 
     def check_application_status(

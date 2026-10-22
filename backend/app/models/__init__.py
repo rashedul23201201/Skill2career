@@ -37,6 +37,7 @@ from app.models.chat import (
     ChatConversation,
     ChatMessage,
 )
+from app.models.notification import Notification
 
 __all__ = [
     "User",
@@ -98,6 +99,7 @@ __all__ = [
     "ModerationAction",
     "ChatConversation",
     "ChatMessage",
+    "Notification",
 ]
 
 

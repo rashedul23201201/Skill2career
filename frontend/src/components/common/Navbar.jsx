@@ -21,7 +21,10 @@ import {
   PlusCircle,
   Users,
   CreditCard,
+  Bell,
 } from "lucide-react";
+import notificationService from "../../services/notificationService";
+import NotificationDrawer from "../notifications/NotificationDrawer";
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -30,7 +33,32 @@ export const Navbar = () => {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const profileDropdownRef = useRef(null);
+
+  // Poll unread notification count when authenticated (SKL-17)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadNotifCount(0);
+      return;
+    }
+
+    const fetchCount = async () => {
+      try {
+        const res = await notificationService.getUnreadCount();
+        if (res?.data?.unread_count !== undefined) {
+          setUnreadNotifCount(res.data.unread_count);
+        }
+      } catch {
+        // Silently ignore polling network errors
+      }
+    };
+
+    fetchCount();
+    const intervalId = setInterval(fetchCount, 30000);
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated]);
 
   // Close profile dropdown on click outside
   useEffect(() => {
@@ -257,6 +285,22 @@ export const Navbar = () => {
                 >
                   <MessageSquare className="w-5 h-5" />
                 </Link>
+
+                {/* App Notification Bell (SKL-17) */}
+                <button
+                  type="button"
+                  onClick={() => setIsNotificationOpen(true)}
+                  className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 transition relative"
+                  title="Notifications (SKL-17)"
+                  aria-label="View notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadNotifCount > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white animate-pulse">
+                      {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+                    </span>
+                  )}
+                </button>
 
                 {/* Profile Dropdown Menu Trigger */}
                 <div className="relative" ref={profileDropdownRef}>
@@ -638,6 +682,14 @@ export const Navbar = () => {
           )}
         </div>
       )}
+
+      {/* Global In-App Notifications Drawer (SKL-17) */}
+      <NotificationDrawer
+        isOpen={isNotificationOpen}
+        onClose={() => setIsNotificationOpen(false)}
+        unreadCount={unreadNotifCount}
+        onUnreadCountChange={setUnreadNotifCount}
+      />
     </header>
   );
 };

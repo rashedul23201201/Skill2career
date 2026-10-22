@@ -70,6 +70,35 @@ class EnrollmentService:
         )
         saved = self.enrollment_repo.create_enrollment(db, enrollment)
 
+        # Event-driven Notification (SKL-17 AC-1)
+        try:
+            from app.models.notification import Notification
+            notif = Notification(
+                recipient_id=current_user.id,
+                event_type="COURSE_ENROLLMENT",
+                title=f"Enrolled in {course.title}",
+                message=f"You have successfully enrolled in '{course.title}'. Start your learning journey today!",
+                link_url=f"/courses/{course.id}/learn",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(notif)
+            if course.instructor_id and course.instructor_id != current_user.id:
+                learner_name = f"{current_user.first_name} {current_user.last_name}".strip() or "A student"
+                instructor_notif = Notification(
+                    recipient_id=course.instructor_id,
+                    event_type="COURSE_ENROLLMENT",
+                    title=f"New Enrollment: {course.title}",
+                    message=f"{learner_name} has enrolled in your course '{course.title}'.",
+                    link_url=f"/courses/{course.id}",
+                    is_read=False,
+                    email_sent=False,
+                )
+                db.add(instructor_notif)
+            db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to store course enrollment notification: %s", notif_err)
+
         instructor_name = (
             f"{course.instructor.first_name} {course.instructor.last_name}"
             if course.instructor
