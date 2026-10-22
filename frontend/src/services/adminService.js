@@ -166,6 +166,30 @@ export const adminService = {
     const response = await api.get("/admin/moderation/logs", { params });
     return response.data;
   },
+
+  /**
+   * Fetch executive overview analytics with user, company, course, job, and revenue metrics (SKL-23).
+   */
+  async getAnalyticsOverview() {
+    const response = await api.get("/admin/analytics/overview");
+    return response.data;
+  },
+
+  /**
+   * Fetch platform revenue analytics, gateway volume, and subscription distribution (SKL-23).
+   */
+  async getRevenueAnalytics() {
+    const response = await api.get("/admin/analytics/revenue");
+    return response.data;
+  },
+
+  /**
+   * Fetch platform recruitment pipeline summary, application funnels, and hiring metrics (SKL-23).
+   */
+  async getRecruitmentSummary() {
+    const response = await api.get("/admin/analytics/recruitment-summary");
+    return response.data;
+  },
 };
 
 export default adminService;
