@@ -344,6 +344,44 @@ class InterviewService:
             f"with interview invitation from {job.company.email} for '{job.title}'"
         )
 
+        # Event-driven Notification & Email Delivery to Candidate (SKL-17 AC-1, AC-4)
+        try:
+            from app.models.notification import Notification
+            from app.services.email_service import email_service
+            title = f"Interview Invitation: {job.title}"
+            body_msg = (
+                f"You have received an interview invitation for the position '{job.title}' "
+                f"from {job.company.first_name if job.company else 'Employer'}. "
+                f"Please select your preferred time slot."
+            )
+            notif = Notification(
+                recipient_id=application.learner_id,
+                event_type="INTERVIEW_INVITE",
+                title=title,
+                message=body_msg,
+                link_url="/learner/applications",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(notif)
+            db.commit()
+
+            if application.learner and application.learner.email:
+                delivered = email_service.send_notification_email(
+                    to_email=application.learner.email,
+                    recipient_name=f"{application.learner.first_name} {application.learner.last_name}".strip() or "Candidate",
+                    subject=f"[Skill2Career] {title}",
+                    event_type="INTERVIEW_INVITE",
+                    title=title,
+                    message=body_msg,
+                    link_url="/learner/applications",
+                )
+                if delivered:
+                    notif.email_sent = True
+                    db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to dispatch interview invite notification: %s", notif_err)
+
         return self._format_interview_response(interview_request)
 
     def get_my_interviews(
@@ -473,6 +511,56 @@ class InterviewService:
             f"candidate {interview.candidate.email} and recruiter {interview.company.email}. "
             f"Confirmed date: {target_slot.start_time}"
         )
+
+        # Event-driven Notification & Email Delivery (SKL-17 AC-1, AC-4)
+        try:
+            from app.models.notification import Notification
+            from app.services.email_service import email_service
+            job_title = interview.job.title if interview.job else "Interview"
+            slot_str = str(target_slot.start_time)
+            title = f"Interview Confirmed: {job_title}"
+            body_msg = f"Your interview for '{job_title}' is confirmed for {slot_str}."
+
+            # Notify candidate
+            candidate_notif = Notification(
+                recipient_id=interview.candidate_id,
+                event_type="INTERVIEW_CONFIRMED",
+                title=title,
+                message=body_msg,
+                link_url="/learner/applications",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(candidate_notif)
+
+            # Notify recruiter / company
+            recruiter_notif = Notification(
+                recipient_id=interview.company_id,
+                event_type="INTERVIEW_CONFIRMED",
+                title=f"Interview Slot Booked: {job_title}",
+                message=f"Candidate has selected interview slot {slot_str} for '{job_title}'.",
+                link_url="/company/dashboard",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(recruiter_notif)
+            db.commit()
+
+            if interview.candidate and interview.candidate.email:
+                delivered = email_service.send_notification_email(
+                    to_email=interview.candidate.email,
+                    recipient_name=f"{interview.candidate.first_name} {interview.candidate.last_name}".strip() or "Candidate",
+                    subject=f"[Skill2Career] {title}",
+                    event_type="INTERVIEW_CONFIRMED",
+                    title=title,
+                    message=body_msg,
+                    link_url="/learner/applications",
+                )
+                if delivered:
+                    candidate_notif.email_sent = True
+                    db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to dispatch interview slot selection notification: %s", notif_err)
 
         return self._format_interview_response(interview)
 

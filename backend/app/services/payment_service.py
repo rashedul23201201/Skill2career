@@ -389,10 +389,46 @@ class PaymentService:
         )
         created_sub = self.repo.create_user_subscription(db, new_sub)
 
-        # Link transaction to newly activated subscription
         txn.subscription_id = created_sub.id
         db.commit()
         db.refresh(txn)
+
+        # Event-driven Notification & Email Delivery (SKL-17 AC-1, AC-4)
+        try:
+            from app.models.notification import Notification
+            from app.services.email_service import email_service
+            title = "Subscription Payment Confirmed"
+            body_msg = (
+                f"Your payment of {txn.amount} {txn.currency} was successful! "
+                f"Your subscription to {plan.name} has been activated."
+            )
+            notif = Notification(
+                recipient_id=txn.user_id,
+                event_type="PAYMENT_SUCCESS",
+                title=title,
+                message=body_msg,
+                link_url="/subscription",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(notif)
+            db.commit()
+
+            if txn.user and txn.user.email:
+                delivered = email_service.send_notification_email(
+                    to_email=txn.user.email,
+                    recipient_name=f"{txn.user.first_name} {txn.user.last_name}".strip() or "Valued Member",
+                    subject=f"[Skill2Career] {title}",
+                    event_type="PAYMENT_SUCCESS",
+                    title=title,
+                    message=body_msg,
+                    link_url="/subscription",
+                )
+                if delivered:
+                    notif.email_sent = True
+                    db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to dispatch SSLCommerz payment notification: %s", notif_err)
 
         return PaymentVerificationResult(
             transaction_ref=txn.transaction_ref,
@@ -539,6 +575,43 @@ class PaymentService:
             txn.subscription_id = created_sub.id
             db.commit()
             db.refresh(txn)
+
+            # Event-driven Notification & Email Delivery (SKL-17 AC-1, AC-4)
+            try:
+                from app.models.notification import Notification
+                from app.services.email_service import email_service
+                title = "Global Subscription Payment Confirmed"
+                body_msg = (
+                    f"Your global payment of {txn.amount} {txn.currency} was successful! "
+                    f"Your subscription to {plan.name} has been activated."
+                )
+                notif = Notification(
+                    recipient_id=txn.user_id,
+                    event_type="PAYMENT_SUCCESS",
+                    title=title,
+                    message=body_msg,
+                    link_url="/subscription",
+                    is_read=False,
+                    email_sent=False,
+                )
+                db.add(notif)
+                db.commit()
+
+                if txn.user and txn.user.email:
+                    delivered = email_service.send_notification_email(
+                        to_email=txn.user.email,
+                        recipient_name=f"{txn.user.first_name} {txn.user.last_name}".strip() or "Valued Member",
+                        subject=f"[Skill2Career] {title}",
+                        event_type="PAYMENT_SUCCESS",
+                        title=title,
+                        message=body_msg,
+                        link_url="/subscription",
+                    )
+                    if delivered:
+                        notif.email_sent = True
+                        db.commit()
+            except Exception as notif_err:
+                logger.warning("Failed to dispatch Stripe payment notification: %s", notif_err)
 
             return PaymentVerificationResult(
                 transaction_ref=txn.transaction_ref,

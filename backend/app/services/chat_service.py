@@ -267,6 +267,25 @@ class ChatService:
         await connection_manager.send_personal_message(recipient_id, ws_payload)
         await connection_manager.send_personal_message(current_user.id, ws_payload)
 
+        # Event-driven Notification for chat message recipient (SKL-17 AC-1)
+        try:
+            from app.models.notification import Notification
+            sender_display_name = f"{current_user.first_name} {current_user.last_name}".strip() or "User"
+            snippet = cleaned_text[:120] + ("..." if len(cleaned_text) > 120 else "")
+            notif = Notification(
+                recipient_id=recipient_id,
+                event_type="CHAT_MESSAGE",
+                title=f"New message from {sender_display_name}",
+                message=snippet,
+                link_url="/messages",
+                is_read=False,
+                email_sent=False,
+            )
+            db.add(notif)
+            db.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to store notification for chat message: %s", notif_err)
+
         return msg_resp
 
     async def mark_as_read(
