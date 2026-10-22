@@ -16,10 +16,14 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password, create_access_token
 from app.models.user import User, UserRole
 from app.models.profile import CompanyProfile, InstructorProfile, LearnerProfile
-from app.models.course import Course, CourseStatus
+from app.models.course import Course, CourseStatus, CourseModule, Lesson
+from app.models.enrollment import CourseEnrollment, LessonProgress
+from app.models.mock_test import MockTest, TestAttempt
 from app.models.job import JobPosting, JobStatus, JobPostingType, JobWorkMode
 from app.models.application import JobApplication, ApplicationStatus
 from app.models.interview import InterviewRequest, InterviewStatus
+from app.models.chat import ChatConversation, ChatMessage
+from app.models.notification import Notification
 from app.models.subscription import (
     PaymentTransaction,
     PaymentStatus,
@@ -416,3 +420,433 @@ def test_detailed_summaries_gateways_and_plans(
     assert len(recent_txs) >= 1
     assert recent_txs[0]["transaction_ref"] is not None
     assert recent_txs[0]["user_email"] == "learner@example.com"
+
+
+# ==============================================================================
+# SPRINT 4 TICKET SKL-59: Learner & Instructor Role Dashboards Test Suite
+# ==============================================================================
+
+@pytest.fixture
+def seeded_dashboard_data(db_session: Session, learner_user: User, instructor_user: User, company_user: User):
+    """Seed comprehensive course, assessment, profile, and interaction data for SKL-59."""
+    # 1. Instructor Profile
+    inst_profile = InstructorProfile(
+        user_id=instructor_user.id,
+        designation="CSE Instructor",
+        institution="Independent Educator",
+        qualification="M.Sc. in Computer Science",
+        expertise_domain="Software Engineering",
+        years_experience="6+ years",
+        onboarding_status="APPROVED",
+    )
+    db_session.add(inst_profile)
+
+    # 2. Learner Profile
+    lrn_profile = LearnerProfile(
+        user_id=learner_user.id,
+        institution="CSE @ UAP",
+        department="B.Sc. in Computer Science & Engineering",
+        target_role="Junior Software Developer",
+        completion_pct=85,
+        skills={"items": ["Java", "Python", "SQL", "Git"]},
+    )
+    db_session.add(lrn_profile)
+    db_session.commit()
+
+    # 3. Course Authored by Instructor
+    course = Course(
+        instructor_id=instructor_user.id,
+        title="Software Engineering",
+        description="Comprehensive preparation covering Graphs, Dynamic Programming & System Complexity.",
+        category="Software Engineering",
+        level="Intermediate",
+        price=2000.0,
+        is_free=False,
+        status=CourseStatus.PUBLISHED.value,
+        duration_weeks=8,
+    )
+    db_session.add(course)
+    db_session.commit()
+    db_session.refresh(course)
+
+    # 4. Course Module & Lessons
+    module = CourseModule(course_id=course.id, title="Module 1: Foundations", order_index=1)
+    db_session.add(module)
+    db_session.commit()
+    db_session.refresh(module)
+
+    lesson1 = Lesson(
+        course_id=course.id,
+        module_id=module.id,
+        title="Intro to Architecture",
+        content_type="VIDEO",
+        order_index=1,
+    )
+    lesson2 = Lesson(
+        course_id=course.id,
+        module_id=module.id,
+        title="Design Patterns",
+        content_type="VIDEO",
+        order_index=2,
+    )
+    lesson3 = Lesson(
+        course_id=course.id,
+        module_id=module.id,
+        title="System Scalability",
+        content_type="VIDEO",
+        order_index=3,
+    )
+    db_session.add_all([lesson1, lesson2, lesson3])
+    db_session.commit()
+
+    # 5. Course Enrollment for Learner
+    enrollment = CourseEnrollment(
+        user_id=learner_user.id,
+        course_id=course.id,
+        status="ACTIVE",
+        progress_percentage=75.0,
+        completed_lessons_count=2,
+    )
+    db_session.add(enrollment)
+    db_session.commit()
+    db_session.refresh(enrollment)
+
+    # 6. Lesson Progress
+    prog1 = LessonProgress(
+        user_id=learner_user.id,
+        course_id=course.id,
+        lesson_id=lesson1.id,
+        enrollment_id=enrollment.id,
+        is_completed=True,
+    )
+    prog2 = LessonProgress(
+        user_id=learner_user.id,
+        course_id=course.id,
+        lesson_id=lesson2.id,
+        enrollment_id=enrollment.id,
+        is_completed=True,
+    )
+    db_session.add_all([prog1, prog2])
+
+    # 7. Mock Test by Instructor
+    mock_test = MockTest(
+        instructor_id=instructor_user.id,
+        title="DSA Mock Test",
+        description="Data structures algorithmic evaluation",
+        category="Software Engineering",
+        duration_minutes=60,
+        passing_score=60,
+        total_questions=25,
+        status="ACTIVE",
+        is_published=True,
+    )
+    db_session.add(mock_test)
+    db_session.commit()
+    db_session.refresh(mock_test)
+
+    # 8. Test Attempt by Learner
+    attempt = TestAttempt(
+        test_id=mock_test.id,
+        learner_id=learner_user.id,
+        score=82.0,
+        total_marks=100.0,
+        percentage=82.0,
+        is_passed=True,
+        submitted_at=datetime.now(timezone.utc),
+    )
+    db_session.add(attempt)
+
+    # 9. Company, Job, Application & Interview
+    company_profile = CompanyProfile(
+        user_id=company_user.id,
+        company_name="Brain Station 23",
+        industry="Software & IT",
+        verification_status="APPROVED",
+    )
+    db_session.add(company_profile)
+
+    job = JobPosting(
+        company_id=company_user.id,
+        title="Junior Software Developer",
+        posting_type=JobPostingType.JOB.value,
+        work_mode=JobWorkMode.REMOTE.value,
+        location="Dhaka",
+        description="Looking for Junior Software Developer",
+        requirements="Python, React",
+        compensation="50,000 BDT/month",
+        status=JobStatus.ACTIVE.value,
+    )
+    db_session.add(job)
+    db_session.commit()
+    db_session.refresh(job)
+
+    app = JobApplication(
+        job_id=job.id,
+        learner_id=learner_user.id,
+        status=ApplicationStatus.SHORTLISTED.value,
+    )
+    db_session.add(app)
+    db_session.commit()
+    db_session.refresh(app)
+
+    interview = InterviewRequest(
+        application_id=app.id,
+        company_id=company_user.id,
+        candidate_id=learner_user.id,
+        job_id=job.id,
+        interview_type="Technical Interview",
+        meeting_platform="Live Coding round via Google Meet",
+        status=InterviewStatus.SCHEDULED.value,
+        scheduled_at=datetime.now(timezone.utc),
+    )
+    db_session.add(interview)
+
+    # 10. Chat & Notification
+    conv = ChatConversation(
+        learner_id=learner_user.id,
+        instructor_id=instructor_user.id,
+    )
+    db_session.add(conv)
+    db_session.commit()
+    db_session.refresh(conv)
+
+    chat_msg = ChatMessage(
+        conversation_id=conv.id,
+        sender_id=learner_user.id,
+        message_text="Hello instructor, I have a question on lesson 2.",
+        is_read=False,
+    )
+    notif = Notification(
+        recipient_id=learner_user.id,
+        event_type="APPLICATION_UPDATE",
+        title="Application Shortlisted",
+        message="Your application at Brain Station 23 was shortlisted.",
+        is_read=False,
+    )
+    db_session.add_all([chat_msg, notif])
+    db_session.commit()
+
+    return {
+        "course": course,
+        "enrollment": enrollment,
+        "mock_test": mock_test,
+        "attempt": attempt,
+        "job": job,
+        "application": app,
+        "interview": interview,
+    }
+
+
+# ==============================================================================
+# AC-1: Given an authenticated learner, when the dashboard opens, then learner-specific information must be displayed.
+# ==============================================================================
+
+def test_learner_dashboard_summary_success(client: TestClient, learner_user: User, seeded_dashboard_data):
+    """AC-1: Authenticated learner receives 200 OK and accurate learner dashboard telemetry."""
+    headers = auth_header(learner_user)
+    response = client.get("/api/v1/learners/dashboard-summary", headers=headers)
+
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["success"] is True
+
+    data = res_data["data"]
+    assert "metrics" in data
+    assert "active_curriculum" in data
+    assert "enrolled_courses" in data
+    assert "latest_interview" in data
+    assert "latest_mock_test" in data
+    assert "latest_application" in data
+    assert "career_profile" in data
+
+    # Verify metric cards
+    assert data["metrics"]["enrolled_courses"] >= 1
+    assert data["metrics"]["course_progress"] == 75.0
+    assert data["metrics"]["mock_test_score"] == 82.0
+    assert data["metrics"]["applications_count"] >= 1
+    assert data["metrics"]["unread_notifications"] >= 1
+
+    # Verify active curriculum
+    assert data["active_curriculum"]["title"] == "Software Engineering"
+    assert data["active_curriculum"]["progress_percentage"] == 75.0
+    assert data["active_curriculum"]["completed_lessons"] == 2
+
+    # Verify assessment result
+    assert data["latest_mock_test"]["test_title"] == "DSA Mock Test"
+    assert data["latest_mock_test"]["percentage"] == 82.0
+    assert data["latest_mock_test"]["is_passed"] is True
+
+    # Verify interview schedule & application
+    assert data["latest_interview"]["job_title"] == "Junior Software Developer"
+    assert data["latest_interview"]["company_name"] == "Brain Station 23"
+    assert data["latest_application"]["company_name"] == "Brain Station 23"
+
+    # Verify career profile
+    assert data["career_profile"]["first_name"] == learner_user.first_name
+    assert data["career_profile"]["institution"] == "CSE @ UAP"
+    assert "Python" in data["career_profile"]["skills"]
+
+
+# ==============================================================================
+# AC-2: Given an authenticated instructor, when the dashboard opens, then instructor-specific information must be displayed.
+# ==============================================================================
+
+def test_instructor_dashboard_summary_success(client: TestClient, instructor_user: User, seeded_dashboard_data):
+    """AC-2: Authenticated instructor receives 200 OK and complete workspace telemetry."""
+    headers = auth_header(instructor_user)
+    response = client.get("/api/v1/instructors/dashboard-summary", headers=headers)
+
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["success"] is True
+
+    data = res_data["data"]
+    assert "metrics" in data
+    assert "my_courses" in data
+    assert "learner_performance" in data
+    assert "profile" in data
+
+    # Verify metrics
+    assert data["metrics"]["active_courses"] >= 1
+    assert data["metrics"]["total_learners"] >= 1
+    assert data["metrics"]["mock_tests"] >= 1
+    assert data["metrics"]["unread_inquiries"] >= 1
+
+    # Verify courses list
+    assert len(data["my_courses"]) >= 1
+    assert data["my_courses"][0]["title"] == "Software Engineering"
+    assert data["my_courses"][0]["enrolled_learners"] >= 1
+    assert data["my_courses"][0]["average_progress"] == 75.0
+
+    # Verify learner performance cohort metrics
+    assert data["learner_performance"]["average_course_progress"] == 75.0
+    assert data["learner_performance"]["average_test_score"] == 82.0
+    assert data["learner_performance"]["cohort_label"] == "Batch 2026"
+
+    # Verify instructor profile summary
+    assert data["profile"]["designation"] == "CSE Instructor"
+    assert data["profile"]["specialization"] == "Software Engineering"
+    assert data["profile"]["onboarding_status"] == "APPROVED"
+
+
+# ==============================================================================
+# AC-3: Given relevant course or test data exists, when the dashboard loads, then appropriate summaries must be shown.
+# ==============================================================================
+
+def test_dashboard_exact_mathematical_aggregation(
+    client: TestClient,
+    db_session: Session,
+    learner_user: User,
+    instructor_user: User,
+    seeded_dashboard_data,
+):
+    """AC-3: System data calculations strictly match database state for both Learner and Instructor."""
+    # 1. Learner verification
+    lrn_res = client.get("/api/v1/learners/dashboard-summary", headers=auth_header(learner_user)).json()["data"]
+    assert lrn_res["metrics"]["enrolled_courses"] == 1
+    assert lrn_res["metrics"]["course_progress"] == 75.0
+    assert lrn_res["metrics"]["mock_test_score"] == 82.0
+
+    # 2. Add a 2nd enrollment with 25% progress and verify average becomes 50%
+    c2 = Course(
+        instructor_id=instructor_user.id,
+        title="Web Programming",
+        description="Comprehensive web development curriculum.",
+        category="Software Engineering",
+        status=CourseStatus.PUBLISHED.value,
+        price=1000.0,
+    )
+    db_session.add(c2)
+    db_session.commit()
+    db_session.refresh(c2)
+
+    enr2 = CourseEnrollment(
+        user_id=learner_user.id,
+        course_id=c2.id,
+        status="ACTIVE",
+        progress_percentage=25.0,
+        completed_lessons_count=1,
+    )
+    db_session.add(enr2)
+    db_session.commit()
+
+    refreshed_lrn = client.get("/api/v1/learners/dashboard-summary", headers=auth_header(learner_user)).json()["data"]
+    assert refreshed_lrn["metrics"]["enrolled_courses"] == 2
+    assert refreshed_lrn["metrics"]["course_progress"] == 50.0  # (75 + 25) / 2
+
+    # 3. Instructor verification: now has 2 courses, 1 distinct student, average progress across 2 enrollments is 50.0%
+    inst_res = client.get("/api/v1/instructors/dashboard-summary", headers=auth_header(instructor_user)).json()["data"]
+    assert inst_res["metrics"]["active_courses"] == 2
+    assert inst_res["metrics"]["total_learners"] == 1
+    assert inst_res["learner_performance"]["average_course_progress"] == 50.0
+
+
+# ==============================================================================
+# AC-4: Given a user is not authenticated, when the dashboard is accessed, then access must be denied.
+# ==============================================================================
+
+def test_unauthenticated_dashboard_access_denied(client: TestClient):
+    """AC-4: Unauthenticated access to learner and instructor summaries returns HTTP 401."""
+    res1 = client.get("/api/v1/learners/dashboard-summary")
+    assert res1.status_code == 401
+    assert res1.json()["error_code"] == "NOT_AUTHENTICATED"
+
+    res2 = client.get("/api/v1/instructors/dashboard-summary")
+    assert res2.status_code == 401
+    assert res2.json()["error_code"] == "NOT_AUTHENTICATED"
+
+
+def test_role_mismatch_dashboard_access_denied(
+    client: TestClient,
+    learner_user: User,
+    instructor_user: User,
+    company_user: User,
+):
+    """AC-4: Role mismatch returns HTTP 403 Forbidden."""
+    # Learner cannot access instructor summary
+    res_lrn = client.get("/api/v1/instructors/dashboard-summary", headers=auth_header(learner_user))
+    assert res_lrn.status_code == 403
+    assert res_lrn.json()["error_code"] == "INSUFFICIENT_ROLE_PERMISSIONS"
+
+    # Instructor cannot access learner summary
+    res_inst = client.get("/api/v1/learners/dashboard-summary", headers=auth_header(instructor_user))
+    assert res_inst.status_code == 403
+    assert res_inst.json()["error_code"] == "INSUFFICIENT_ROLE_PERMISSIONS"
+
+    # Company cannot access either
+    res_comp1 = client.get("/api/v1/learners/dashboard-summary", headers=auth_header(company_user))
+    assert res_comp1.status_code == 403
+    assert res_comp1.json()["error_code"] == "INSUFFICIENT_ROLE_PERMISSIONS"
+
+    res_comp2 = client.get("/api/v1/instructors/dashboard-summary", headers=auth_header(company_user))
+    assert res_comp2.status_code == 403
+    assert res_comp2.json()["error_code"] == "INSUFFICIENT_ROLE_PERMISSIONS"
+
+
+# ==============================================================================
+# AC-5: Given dashboard data cannot be retrieved or is empty, graceful response is handled.
+# ==============================================================================
+
+def test_empty_state_graceful_handling(client: TestClient, db_session: Session):
+    """AC-5: Brand new accounts with zero enrollments/courses return clean empty states without crashing."""
+    new_learner = create_user(db_session, "brandnew.learner@example.com", UserRole.LEARNER, "Newbie", "Student")
+    new_instructor = create_user(db_session, "brandnew.instructor@example.com", UserRole.INSTRUCTOR, "Fresh", "Teacher")
+
+    # Learner empty state
+    res_l = client.get("/api/v1/learners/dashboard-summary", headers=auth_header(new_learner))
+    assert res_l.status_code == 200
+    data_l = res_l.json()["data"]
+    assert data_l["metrics"]["enrolled_courses"] == 0
+    assert data_l["metrics"]["course_progress"] == 0.0
+    assert data_l["metrics"]["mock_test_score"] == 0.0
+    assert data_l["active_curriculum"] is None
+    assert len(data_l["enrolled_courses"]) == 0
+
+    # Instructor empty state
+    res_i = client.get("/api/v1/instructors/dashboard-summary", headers=auth_header(new_instructor))
+    assert res_i.status_code == 200
+    data_i = res_i.json()["data"]
+    assert data_i["metrics"]["active_courses"] == 0
+    assert data_i["metrics"]["total_learners"] == 0
+    assert len(data_i["my_courses"]) == 0
+    assert data_i["learner_performance"]["average_course_progress"] == 0.0

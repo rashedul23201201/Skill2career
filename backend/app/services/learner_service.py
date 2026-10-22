@@ -380,3 +380,9 @@ class LearnerService:
         updated_profile = self.learner_repo.update(db, profile)
 
         return self.serialize_profile(user, updated_profile)
+
+    def get_dashboard_summary(self, db: Session, user: User):
+        """Retrieve consolidated candidate telemetry for dashboard (SKL-59)."""
+        from app.repositories.role_dashboard_repository import RoleDashboardRepository
+        return RoleDashboardRepository.get_learner_dashboard_summary(db, user)
+

@@ -236,17 +236,23 @@ class InstructorService:
 
         return self._serialize(profile)
 
+    def get_dashboard_summary(self, db: Session, user: User):
+        """Retrieve consolidated instructor workspace telemetry for dashboard (SKL-59)."""
+        from app.repositories.role_dashboard_repository import RoleDashboardRepository
+        return RoleDashboardRepository.get_instructor_dashboard_summary(db, user)
+
     def get_dashboard_stats(self, db: Session, user: User) -> InstructorDashboardStats:
-        """Fetch dashboard counters for the instructor workspace (SKL-52)."""
+        """Fetch dashboard counters for the instructor workspace (SKL-52/SKL-59)."""
         profile = self.instructor_repo.get_by_user_id(db, user.id)
         serialized_profile = self._serialize(profile, user) if profile else None
-        status = profile.onboarding_status if profile else "PENDING_REVIEW"
+        summary = self.get_dashboard_summary(db, user)
 
         return InstructorDashboardStats(
-            active_courses=0,
-            total_learners=0,
-            mock_tests=0,
-            upcoming_interviews=0,
-            onboarding_status=status,
-            profile=serialized_profile
+            active_courses=summary.metrics.active_courses,
+            total_learners=summary.metrics.total_learners,
+            mock_tests=summary.metrics.mock_tests,
+            upcoming_interviews=summary.metrics.upcoming_interviews,
+            onboarding_status=summary.profile.onboarding_status,
+            profile=serialized_profile,
         )
+
