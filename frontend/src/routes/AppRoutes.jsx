@@ -31,6 +31,7 @@ import TestResult from "../pages/TestResult";
 import Forum from "../pages/Forum";
 import ForumPostDetail from "../pages/ForumPostDetail";
 import Subscription from "../pages/Subscription";
+import Messages from "../pages/Messages";
 import NotFound from "../pages/NotFound";
 import ProtectedRoute from "../components/common/ProtectedRoute";
 import { ROUTES, USER_ROLES } from "../constants";
@@ -339,6 +340,24 @@ export const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <Subscription />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Sprint 4 Real-time Chat & Guidance Routes (SKL-16) */}
+        <Route
+          path={ROUTES.MESSAGES}
+          element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.CHAT}
+          element={
+            <ProtectedRoute>
+              <Messages />
             </ProtectedRoute>
           }
         />

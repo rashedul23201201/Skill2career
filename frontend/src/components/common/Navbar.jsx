@@ -249,6 +249,15 @@ export const Navbar = () => {
                 {/* Role-Specific Quick CTA */}
                 {renderQuickActionBtn()}
 
+                {/* Direct Messages & Chat Link (SKL-16) */}
+                <Link
+                  to={ROUTES.MESSAGES}
+                  className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 transition relative"
+                  title="Messages & Chat (SKL-16)"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                </Link>
+
                 {/* Profile Dropdown Menu Trigger */}
                 <div className="relative" ref={profileDropdownRef}>
                   <button
@@ -320,6 +329,14 @@ export const Navbar = () => {
                         >
                           <LayoutDashboard className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
                           <span>My Dashboard</span>
+                        </Link>
+
+                        <Link
+                          to={ROUTES.MESSAGES}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+                          <span>Messages &amp; Real-time Chat</span>
                         </Link>
 
                         {user?.role === USER_ROLES.LEARNER && (

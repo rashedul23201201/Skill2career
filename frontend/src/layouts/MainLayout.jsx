@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
+import ChatWidget from "../components/chat/ChatWidget";
 
 export const MainLayout = () => {
   return (
@@ -11,6 +12,8 @@ export const MainLayout = () => {
         <Outlet />
       </main>
       <Footer />
+      {/* Global Real-time Chat Drawer (SKL-16) */}
+      <ChatWidget />
     </div>
   );
 };

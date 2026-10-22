@@ -18,6 +18,7 @@ import {
   Share2,
   Shield,
   Download,
+  MessageSquare,
 } from "lucide-react";
 
 export const CourseDetails = () => {
@@ -258,6 +259,18 @@ export const CourseDetails = () => {
               className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all text-center flex items-center justify-center space-x-1.5"
             >
               <span>Log in to Enroll</span>
+            </Link>
+          )}
+
+          {/* Real-time Instructor Chat Shortcut (SKL-16) */}
+          {user && course.instructor_id && course.instructor_id !== user.id && (
+            <Link
+              to={`/messages?user=${course.instructor_id}`}
+              className="w-full py-2 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-700 hover:text-blue-600 font-semibold text-xs transition-all text-center flex items-center justify-center space-x-1.5 shadow-xs"
+              title="Message Instructor for Real-time Guidance (SKL-16)"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+              <span>Chat with Instructor</span>
             </Link>
           )}
         </div>
