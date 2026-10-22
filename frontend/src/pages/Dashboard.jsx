@@ -6,6 +6,7 @@ import courseService from "../services/courseService";
 import Button from "../components/forms/Button";
 import { ROUTES, USER_ROLES } from "../constants";
 import LearnerCandidateDashboard from "./learner/LearnerCandidateDashboard";
+import InstructorDashboard from "./instructor/InstructorDashboard";
 import {
   User,
   Shield,
@@ -70,6 +71,10 @@ export const Dashboard = () => {
 
   if (user?.role === USER_ROLES.LEARNER) {
     return <LearnerCandidateDashboard />;
+  }
+
+  if (user?.role === USER_ROLES.INSTRUCTOR) {
+    return <InstructorDashboard />;
   }
 
   const isInstructor = user?.role === USER_ROLES.INSTRUCTOR;

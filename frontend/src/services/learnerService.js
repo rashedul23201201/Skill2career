@@ -5,6 +5,14 @@ import api from "./api";
  */
 export const learnerService = {
   /**
+   * Fetch consolidated candidate dashboard telemetry (SKL-59).
+   */
+  async getDashboardSummary() {
+    const response = await api.get("/learners/dashboard-summary");
+    return response.data;
+  },
+
+  /**
    * Fetch authenticated learner's complete profile with completion breakdown.
    */
   async getProfile() {

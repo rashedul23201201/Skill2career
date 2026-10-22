@@ -14,6 +14,7 @@ from app.schemas.learner import (
 )
 from app.schemas.mock_test import TestResultResponse
 from app.schemas.job import SavedJobItemResponse, RecommendedJobResponse
+from app.schemas.dashboard import LearnerDashboardSummaryResponse
 from app.services.learner_service import LearnerService
 from app.services.mock_test_service import MockTestService
 from app.services.saved_job_service import SavedJobService
@@ -212,6 +213,25 @@ def get_recommended_jobs(
         success=True,
         message="Personalized job recommendations retrieved successfully",
         data=recommendations,
+    )
+
+
+@router.get(
+    "/dashboard-summary",
+    response_model=ApiResponse[LearnerDashboardSummaryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get authenticated learner consolidated dashboard telemetry (SKL-59)",
+)
+def get_learner_dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.LEARNER, UserRole.ADMIN)),
+) -> ApiResponse[LearnerDashboardSummaryResponse]:
+    """Retrieve candidate progress, enrolled courses, assessments, interview pipeline, and career profile (SKL-59)."""
+    summary = learner_service.get_dashboard_summary(db=db, user=current_user)
+    return ApiResponse[LearnerDashboardSummaryResponse](
+        success=True,
+        message="Learner dashboard summary retrieved successfully",
+        data=summary,
     )
 
 

@@ -37,6 +37,14 @@ const instructorService = {
   },
 
   /**
+   * Fetch consolidated instructor workspace dashboard telemetry (SKL-59).
+   */
+  getDashboardSummary: async () => {
+    const response = await api.get("/instructors/dashboard-summary");
+    return response.data;
+  },
+
+  /**
    * Admin: Fetch pending instructor applications awaiting review.
    */
   getPendingInstructors: async (skip = 0, limit = 50) => {

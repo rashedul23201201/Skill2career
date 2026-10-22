@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.dependencies.auth import get_current_user
-from app.models.user import User
+from app.dependencies.auth import get_current_user, require_role
+from app.models.user import User, UserRole
 from app.schemas.auth import ApiResponse
 from app.schemas.instructor import (
     InstructorApplicationRequest,
@@ -11,6 +11,7 @@ from app.schemas.instructor import (
     InstructorProfileResponse,
     InstructorDashboardStats,
 )
+from app.schemas.dashboard import InstructorDashboardSummaryResponse
 from app.services.instructor_service import InstructorService
 
 router = APIRouter(prefix="/instructors", tags=["Instructor Management"])
@@ -93,3 +94,23 @@ def get_instructor_dashboard_stats(
         message="Instructor dashboard telemetry retrieved successfully",
         data=stats_data
     )
+
+
+@router.get(
+    "/dashboard-summary",
+    response_model=ApiResponse[InstructorDashboardSummaryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get authenticated instructor workspace dashboard telemetry (SKL-59)"
+)
+def get_instructor_dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.INSTRUCTOR, UserRole.ADMIN)),
+) -> ApiResponse[InstructorDashboardSummaryResponse]:
+    """Retrieve instructor metrics: active courses, total learners, mock tests, learner performance cohort, and upcoming interviews (SKL-59)."""
+    summary = instructor_service.get_dashboard_summary(db, current_user)
+    return ApiResponse[InstructorDashboardSummaryResponse](
+        success=True,
+        message="Instructor dashboard summary retrieved successfully",
+        data=summary
+    )
+
